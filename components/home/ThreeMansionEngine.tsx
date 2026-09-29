@@ -2342,16 +2342,16 @@ export default function ThreeMansionEngine() {
       depthWrite: false,
     });
 
-    // 2-Block Wide Monumental Dimensions (Spans across 2 whole wall blocks/bays)
+    // 2-Block Wide Monumental Dimensions (Spans across 2 whole wall blocks/bays, Extended Full-Height Down to Floor)
     const muralCanvasW = 6.80; // 6.8m wide (2 full wall bays)
-    const muralCanvasH = 3.40; // 3.4m high (fills upper wall field from Y=1.75 to Y=5.15)
+    const muralCanvasH = 4.40; // 4.4m high (extends vertically from near skirting Y=0.59 to ceiling Y=5.25)
     const muralRailDepth = 0.12;
-    const muralRailWidth = 0.10;
-    const muralMatBorder = 0.08;
-    const muralOuterWidth = muralCanvasW + muralMatBorder * 2 + muralRailWidth * 2; // 7.16m
-    const muralOuterHeight = muralCanvasH + muralMatBorder * 2 + muralRailWidth * 2; // 3.76m
-    const muralInnerW = muralOuterWidth - muralRailWidth * 2; // 6.96m
-    const muralInnerH = muralOuterHeight - muralRailWidth * 2; // 3.56m
+    const muralRailWidth = 0.08;
+    const muralMatBorder = 0.05;
+    const muralOuterWidth = muralCanvasW + muralMatBorder * 2 + muralRailWidth * 2; // 7.06m
+    const muralOuterHeight = muralCanvasH + muralMatBorder * 2 + muralRailWidth * 2; // 4.66m
+    const muralInnerW = muralOuterWidth - muralRailWidth * 2; // 6.90m
+    const muralInnerH = muralOuterHeight - muralRailWidth * 2; // 4.50m
     const muralFilletDepth = 0.04;
     const muralFilletWidth = 0.025;
 
@@ -2455,7 +2455,7 @@ export default function ThreeMansionEngine() {
       glassPane.position.set(facingDir * 0.082, 0, 0);
 
       // 7. Triple Overhead Brass Gallery Picture Light Fixtures across the 6.8m span
-      const lightY = muralOuterHeight / 2 + 0.32;
+      const lightY = muralOuterHeight / 2 + 0.30;
       for (const offsetZ of [-2.1, 0, 2.1]) {
         const arm1 = new THREE.Mesh(sharedMuralArmGeo, antiqueGoldMat);
         arm1.rotation.z = facingDir * (Math.PI / 2);
@@ -2482,47 +2482,47 @@ export default function ThreeMansionEngine() {
       scene.add(artGroup);
     };
 
-    // Place 2-Block Wide 4K Monumental Exhibition Murals along both walls
+    // Place 2-Block Wide 4K Monumental Exhibition Murals along both walls (Full-Wall Height, Center Y = 2.92)
     // LEFT WALL (facingDir = 1, X = -hallWidth/2) - 2 Blocks Per Image
     // Section 1: Entry to Chamber 1 (Z = +10 to -16)
-    createMonumental2BlockMural(-hallWidth / 2, 3.65, 8.5, 1, muralTex1);   // Double-Height Living Suite (Bays 1-2)
-    createMonumental2BlockMural(-hallWidth / 2, 3.65, 1.0, 1, muralTex2);   // Royal Velvet Dining Hall (Bays 3-4)
-    createMonumental2BlockMural(-hallWidth / 2, 3.65, -6.5, 1, muralTex3);  // Master Bedroom Recliner Suite (Bays 5-6)
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, 8.5, 1, muralTex1);   // Double-Height Living Suite (Bays 1-2)
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, 1.0, 1, muralTex2);   // Royal Velvet Dining Hall (Bays 3-4)
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -6.5, 1, muralTex3);  // Master Bedroom Recliner Suite (Bays 5-6)
     // [Portal I at Z = -20: Chamber 1 Entry - leaves 3.6m clean clearance]
     // Section 2: Between Chamber 1 and Chamber 3 (Z = -26 to -64)
-    createMonumental2BlockMural(-hallWidth / 2, 3.65, -27.5, 1, muralTex4); // Master Bedroom Vanity
-    createMonumental2BlockMural(-hallWidth / 2, 3.65, -35.0, 1, muralTex5); // Parents Classical Bedroom
-    createMonumental2BlockMural(-hallWidth / 2, 3.65, -42.5, 1, muralTex6); // Parents Velvet Lounge
-    createMonumental2BlockMural(-hallWidth / 2, 3.65, -50.0, 1, muralTex7); // Coral Velvet Pooja Mandir
-    createMonumental2BlockMural(-hallWidth / 2, 3.65, -57.5, 1, muralTex8); // Sacred Mandir Jali Suite
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -27.5, 1, muralTex4); // Master Bedroom Vanity
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -35.0, 1, muralTex5); // Parents Classical Bedroom
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -42.5, 1, muralTex6); // Parents Velvet Lounge
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -50.0, 1, muralTex7); // Coral Velvet Pooja Mandir
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -57.5, 1, muralTex8); // Sacred Mandir Jali Suite
     // [Portal III at Z = -70: Chamber 3 Entry]
     // Section 3: After Chamber 3 (Z = -76 to -115)
-    createMonumental2BlockMural(-hallWidth / 2, 3.65, -77.5, 1, muralTex9);  // Luxury Guest Suite
-    createMonumental2BlockMural(-hallWidth / 2, 3.65, -85.0, 1, muralTex10); // Architectural Silk Guest Lounge
-    createMonumental2BlockMural(-hallWidth / 2, 3.65, -92.5, 1, muralTex11); // Master Penthouse Suite
-    createMonumental2BlockMural(-hallWidth / 2, 3.65, -100.0, 1, muralTex12); // Grand Panoramic Living
-    createMonumental2BlockMural(-hallWidth / 2, 3.65, -107.5, 1, muralTex13); // Royal Dining Suite
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -77.5, 1, muralTex9);  // Luxury Guest Suite
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -85.0, 1, muralTex10); // Architectural Silk Guest Lounge
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -92.5, 1, muralTex11); // Master Penthouse Suite
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -100.0, 1, muralTex12); // Grand Panoramic Living
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -107.5, 1, muralTex13); // Royal Dining Suite
 
     // RIGHT WALL (facingDir = -1, X = hallWidth/2) - 2 Blocks Per Image
     // Section 1: Entry to Chamber 2 (Z = +10 to -40)
-    createMonumental2BlockMural(hallWidth / 2, 3.65, 8.5, -1, muralTex14);  // Executive Library Lounge
-    createMonumental2BlockMural(hallWidth / 2, 3.65, 1.0, -1, muralTex15);  // Master Bedroom Spa Suite
-    createMonumental2BlockMural(hallWidth / 2, 3.65, -6.5, -1, muralTex16); // Bespoke Walk-in Wardrobe
-    createMonumental2BlockMural(hallWidth / 2, 3.65, -14.0, -1, muralTex1); // Double-Height Grand Living
-    createMonumental2BlockMural(hallWidth / 2, 3.65, -21.5, -1, muralTex2); // Royal Velvet Dining Hall
-    createMonumental2BlockMural(hallWidth / 2, 3.65, -29.0, -1, muralTex3); // Master Bedroom Recliner Suite
-    createMonumental2BlockMural(hallWidth / 2, 3.65, -36.5, -1, muralTex4); // Master Bedroom Vanity
+    createMonumental2BlockMural(hallWidth / 2, 2.92, 8.5, -1, muralTex14);  // Executive Library Lounge
+    createMonumental2BlockMural(hallWidth / 2, 2.92, 1.0, -1, muralTex15);  // Master Bedroom Spa Suite
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -6.5, -1, muralTex16); // Bespoke Walk-in Wardrobe
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -14.0, -1, muralTex1); // Double-Height Grand Living
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -21.5, -1, muralTex2); // Royal Velvet Dining Hall
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -29.0, -1, muralTex3); // Master Bedroom Recliner Suite
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -36.5, -1, muralTex4); // Master Bedroom Vanity
     // [Portal II at Z = -45: Chamber 2 Entry]
     // Section 2: Between Chamber 2 and Chamber 4 (Z = -51 to -89)
-    createMonumental2BlockMural(hallWidth / 2, 3.65, -52.5, -1, muralTex5); // Parents Classical Bedroom
-    createMonumental2BlockMural(hallWidth / 2, 3.65, -60.0, -1, muralTex6); // Parents Velvet Lounge
-    createMonumental2BlockMural(hallWidth / 2, 3.65, -67.5, -1, muralTex7); // Coral Velvet Pooja Mandir
-    createMonumental2BlockMural(hallWidth / 2, 3.65, -75.0, -1, muralTex8); // Sacred Mandir Jali Suite
-    createMonumental2BlockMural(hallWidth / 2, 3.65, -82.5, -1, muralTex9); // Luxury Guest Suite
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -52.5, -1, muralTex5); // Parents Classical Bedroom
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -60.0, -1, muralTex6); // Parents Velvet Lounge
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -67.5, -1, muralTex7); // Coral Velvet Pooja Mandir
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -75.0, -1, muralTex8); // Sacred Mandir Jali Suite
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -82.5, -1, muralTex9); // Luxury Guest Suite
     // [Portal IV at Z = -95: Chamber 4 Entry]
     // Section 3: After Chamber 4 (Z = -101 to -115)
-    createMonumental2BlockMural(hallWidth / 2, 3.65, -102.5, -1, muralTex10); // Architectural Silk Guest Lounge
-    createMonumental2BlockMural(hallWidth / 2, 3.65, -110.0, -1, muralTex11); // Master Penthouse Suite
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -102.5, -1, muralTex10); // Architectural Silk Guest Lounge
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -110.0, -1, muralTex11); // Master Penthouse Suite
 
     // --- CORRIDOR WALLS & INSTANCED BOISERIE PANEL SYSTEM (2 DRAW CALLS TOTAL) ---
     const unitBoxGeo = new THREE.BoxGeometry(1, 1, 1);
