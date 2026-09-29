@@ -2434,18 +2434,18 @@ export default function ThreeMansionEngine() {
       matMesh.position.set(facingDir * 0.035, 0, 0);
 
       // 5. Crystal-Clear 4K Master Artwork Canvas (with uniform museum illumination)
-      const canvasMesh = new THREE.Mesh(
-        sharedMuralCanvasGeo,
-        new THREE.MeshStandardMaterial({
-          map: tex,
-          emissiveMap: tex,
-          emissive: 0xffffff,
-          emissiveIntensity: 0.38, // Museum picture-light illumination for 100% crystal clarity
-          roughness: 0.35,
-          metalness: 0.02,
-          side: THREE.DoubleSide,
-        })
-      );
+      const canvasMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        map: tex,
+        emissiveMap: tex,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.38, // Museum picture-light illumination for 100% crystal clarity
+        roughness: 0.35,
+        metalness: 0.02,
+        side: THREE.FrontSide,
+      });
+
+      const canvasMesh = new THREE.Mesh(sharedMuralCanvasGeo, canvasMat);
       canvasMesh.rotation.y = facingDir * (Math.PI / 2);
       canvasMesh.position.set(facingDir * 0.055, 0, 0);
 
