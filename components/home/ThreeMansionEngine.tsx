@@ -467,22 +467,37 @@ export default function ThreeMansionEngine() {
     const cofferNormTex = textureLoader.load("/assets/textures/champagne_gold_coffer_normal.jpg");
 
     // Curated 4K Grand Hallway Exhibition Murals (from master lahoti content portfolio)
-    const muralTex1 = textureLoader.load("/assets/hallway_murals/mural_01.jpg");
-    const muralTex2 = textureLoader.load("/assets/hallway_murals/mural_02.jpg");
-    const muralTex3 = textureLoader.load("/assets/hallway_murals/mural_03.jpg");
-    const muralTex4 = textureLoader.load("/assets/hallway_murals/mural_04.jpg");
-    const muralTex5 = textureLoader.load("/assets/hallway_murals/mural_05.jpg");
-    const muralTex6 = textureLoader.load("/assets/hallway_murals/mural_06.jpg");
-    const muralTex7 = textureLoader.load("/assets/hallway_murals/mural_07.jpg");
-    const muralTex8 = textureLoader.load("/assets/hallway_murals/mural_08.jpg");
-    const muralTex9 = textureLoader.load("/assets/hallway_murals/mural_09.jpg");
-    const muralTex10 = textureLoader.load("/assets/hallway_murals/mural_10.jpg");
-    const muralTex11 = textureLoader.load("/assets/hallway_murals/mural_11.jpg");
-    const muralTex12 = textureLoader.load("/assets/hallway_murals/mural_12.jpg");
-    const muralTex13 = textureLoader.load("/assets/hallway_murals/mural_13.jpg");
-    const muralTex14 = textureLoader.load("/assets/hallway_murals/mural_14.jpg");
-    const muralTex15 = textureLoader.load("/assets/hallway_murals/mural_15.jpg");
-    const muralTex16 = textureLoader.load("/assets/hallway_murals/mural_16.jpg");
+    const loadMural = (src: string) => {
+      const t = textureLoader.load(src, (loaded) => {
+        loaded.colorSpace = THREE.SRGBColorSpace;
+        loaded.minFilter = THREE.LinearMipmapLinearFilter;
+        loaded.magFilter = THREE.LinearFilter;
+        loaded.generateMipmaps = true;
+        loaded.needsUpdate = true;
+      });
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.magFilter = THREE.LinearFilter;
+      t.generateMipmaps = true;
+      return t;
+    };
+
+    const muralTex1 = loadMural("/assets/hallway_murals/mural_01.jpg");
+    const muralTex2 = loadMural("/assets/hallway_murals/mural_02.jpg");
+    const muralTex3 = loadMural("/assets/hallway_murals/mural_03.jpg");
+    const muralTex4 = loadMural("/assets/hallway_murals/mural_04.jpg");
+    const muralTex5 = loadMural("/assets/hallway_murals/mural_05.jpg");
+    const muralTex6 = loadMural("/assets/hallway_murals/mural_06.jpg");
+    const muralTex7 = loadMural("/assets/hallway_murals/mural_07.jpg");
+    const muralTex8 = loadMural("/assets/hallway_murals/mural_08.jpg");
+    const muralTex9 = loadMural("/assets/hallway_murals/mural_09.jpg");
+    const muralTex10 = loadMural("/assets/hallway_murals/mural_10.jpg");
+    const muralTex11 = loadMural("/assets/hallway_murals/mural_11.jpg");
+    const muralTex12 = loadMural("/assets/hallway_murals/mural_12.jpg");
+    const muralTex13 = loadMural("/assets/hallway_murals/mural_13.jpg");
+    const muralTex14 = loadMural("/assets/hallway_murals/mural_14.jpg");
+    const muralTex15 = loadMural("/assets/hallway_murals/mural_15.jpg");
+    const muralTex16 = loadMural("/assets/hallway_murals/mural_16.jpg");
 
     const allMuralTextures = [
       muralTex1, muralTex2, muralTex3, muralTex4,
@@ -490,12 +505,6 @@ export default function ThreeMansionEngine() {
       muralTex9, muralTex10, muralTex11, muralTex12,
       muralTex13, muralTex14, muralTex15, muralTex16,
     ];
-    allMuralTextures.forEach((t) => {
-      t.colorSpace = THREE.SRGBColorSpace;
-      t.minFilter = THREE.LinearMipmapLinearFilter;
-      t.magFilter = THREE.LinearFilter;
-      t.generateMipmaps = true;
-    });
 
     // Chamber Photography Renders
     const texGrand = textureLoader.load("/assets/chambers/chamber1_grand.jpg");
@@ -5576,7 +5585,10 @@ export default function ThreeMansionEngine() {
     const warmUpGPU = () => {
       allTextures.forEach((tex) => {
         try {
-          renderer.initTexture(tex);
+          const img = tex?.image as { complete?: boolean; width?: number } | undefined;
+          if (img && (img.complete || (img.width && img.width > 0))) {
+            renderer.initTexture(tex);
+          }
         } catch (_) {}
       });
 

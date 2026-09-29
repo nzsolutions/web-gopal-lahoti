@@ -33,6 +33,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <link rel="preload" as="image" href="/assets/textures/italian_black_marble.jpg" />
+        <link rel="preload" as="image" href="/assets/hallway_murals/mural_01.jpg" />
+        <link rel="preload" as="image" href="/assets/hallway_murals/mural_02.jpg" />
+        <link rel="preload" as="image" href="/assets/hallway_murals/mural_03.jpg" />
+        <link rel="preload" as="image" href="/assets/hallway_murals/mural_14.jpg" />
+        <link rel="preload" as="image" href="/assets/hallway_murals/mural_15.jpg" />
+        <link rel="preload" as="image" href="/assets/hallway_murals/mural_16.jpg" />
+      </head>
       <body className="bg-[#080809] text-[#f4f1ea] antialiased selection:bg-[#c5a880] selection:text-[#080809]">
         <CustomCursor />
         {children}
