@@ -770,9 +770,11 @@ export default function ThreeMansionEngine() {
       color: 0xd2c0a6,
     });
 
-    // Ceiling: Light warm ivory stone
+    // Ceiling: Light warm ivory stone with soft ambient lift
     const corridorCeilingMat = new THREE.MeshStandardMaterial({
       color: 0xfbf6ee,
+      emissive: 0x2e2720,
+      emissiveIntensity: 0.20,
       roughness: 0.60,
     });
 
@@ -789,9 +791,11 @@ export default function ThreeMansionEngine() {
       map: cofferDiffTex,
       normalMap: cofferNormTex,
       normalScale: new THREE.Vector2(0.40, 0.40),
-      color: 0xc9a961, // Exact warm champagne / brushed antique gold
-      roughness: 0.35, // Soft satin sheen (reflects light softly)
-      metalness: 0.72, // Luxury metallic finish
+      color: 0xd4af55, // Warm champagne / brushed antique gold
+      emissive: 0x48341a, // Soft cove indirect glow
+      emissiveIntensity: 0.38,
+      roughness: 0.42, // Soft satin sheen
+      metalness: 0.12, // Refined metallic balance for rich diffuse
     });
 
     // Dark Architectural Shadow Reveal for coffer recesses
@@ -2403,11 +2407,14 @@ export default function ThreeMansionEngine() {
       matMesh.rotation.y = facingDir * (Math.PI / 2);
       matMesh.position.set(facingDir * 0.035, 0, 0);
 
-      // 5. Artwork Canvas
+      // 5. Artwork Canvas (with gallery lighting illumination)
       const canvasMesh = new THREE.Mesh(
         sharedArtCanvasGeo,
         new THREE.MeshStandardMaterial({
           map: tex,
+          emissiveMap: tex,
+          emissive: 0xffffff,
+          emissiveIntensity: 0.35, // Museum picture-light illumination
           roughness: 0.35,
           metalness: 0.02,
           side: THREE.DoubleSide,
