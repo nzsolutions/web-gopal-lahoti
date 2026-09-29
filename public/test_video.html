@@ -1,0 +1,57 @@
+﻿<!DOCTYPE html>
+<html>
+<head><title>Bumper Detector</title></head>
+<body style="background:#000; color:#fff; font-family:sans-serif; padding:20px;">
+  <div id="results"></div>
+  <script>
+    const videos = [
+      'video_6_final.mp4',
+      'gopal_lahoti_designs_video_5_final.mp4',
+      'video_7_final.mp4',
+      'video_8_final.mp4',
+      'video_9.mp4',
+      'video_10.mp4',
+      'video_11.mp4',
+      'video_12.mp4',
+      'combine_video_1_final.mp4'
+    ];
+
+    async function inspectAll() {
+      const resDiv = document.getElementById('results');
+      for (const v of videos) {
+        const vid = document.createElement('video');
+        vid.src = '/assets/videos/' + v;
+        vid.muted = true;
+        vid.preload = 'auto';
+        
+        await new Promise(r => vid.onloadedmetadata = r);
+        
+        const card = document.createElement('div');
+        card.style.marginBottom = '20px';
+        card.innerHTML = `<h3>${v} (Duration: ${vid.duration.toFixed(1)}s)</h3><div id="frames-${v}" style="display:flex; gap:10px;"></div>`;
+        resDiv.appendChild(card);
+        
+        const frameContainer = card.querySelector('#frames-' + v);
+        // sample at 0s, 2s, 4s, 6s
+        for (const t of [0, 2, 3.5, 5, 8]) {
+          if (t < vid.duration) {
+            vid.currentTime = t;
+            await new Promise(r => vid.onseeked = r);
+            const canvas = document.createElement('canvas');
+            canvas.width = 160;
+            canvas.height = 90;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(vid, 0, 0, 160, 90);
+            
+            const frameBox = document.createElement('div');
+            frameBox.innerHTML = `<span style="font-size:10px;">${t}s</span>`;
+            frameBox.appendChild(canvas);
+            frameContainer.appendChild(frameBox);
+          }
+        }
+      }
+    }
+    inspectAll();
+  </script>
+</body>
+</html>

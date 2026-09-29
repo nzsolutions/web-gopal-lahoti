@@ -1,0 +1,19 @@
+﻿<!DOCTYPE html>
+<html>
+<head><title>Test Pixel Check</title></head>
+<body>
+<script>
+  // check video times
+  const vids = ['video_6_final.mp4', 'gopal_lahoti_designs_video_5_final.mp4', 'video_7_final.mp4', 'video_8_final.mp4', 'video_9.mp4'];
+  async function test() {
+    for (const name of vids) {
+      const v = document.createElement('video');
+      v.src = '/assets/videos/' + name;
+      await new Promise(r => v.onloadedmetadata = r);
+      console.log(name, 'duration:', v.duration);
+    }
+  }
+  test();
+</script>
+</body>
+</html>
