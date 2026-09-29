@@ -507,40 +507,40 @@ export default function ThreeMansionEngine() {
     ];
 
     // Chamber Photography Renders
-    const texGrand = textureLoader.load("/assets/chambers/chamber1_grand.jpg");
-    const texVersace = textureLoader.load("/assets/chambers/chamber2_versace.jpg");
-    const texSacred = textureLoader.load("/assets/chambers/chamber3_sacred.jpg");
-    const texCorporate = textureLoader.load("/assets/chambers/chamber4_corporate.jpg");
+    const texGrand = loadMural("/assets/chambers/chamber1_grand.jpg");
+    const texVersace = loadMural("/assets/chambers/chamber2_versace.jpg");
+    const texSacred = loadMural("/assets/chambers/chamber3_sacred.jpg");
+    const texCorporate = loadMural("/assets/chambers/chamber4_corporate.jpg");
 
-    const texGrandDetail = textureLoader.load("/assets/chambers/chamber1_detail.jpg");
-    const texVersaceDetail = textureLoader.load("/assets/chambers/chamber2_detail.jpg");
-    const texSacredDetail = textureLoader.load("/assets/chambers/chamber3_detail.jpg");
-    const texCorporateDetail = textureLoader.load("/assets/chambers/chamber4_detail.jpg");
+    const texGrandDetail = loadMural("/assets/chambers/chamber1_detail.jpg");
+    const texVersaceDetail = loadMural("/assets/chambers/chamber2_detail.jpg");
+    const texSacredDetail = loadMural("/assets/chambers/chamber3_detail.jpg");
+    const texCorporateDetail = loadMural("/assets/chambers/chamber4_detail.jpg");
 
     // Real Gopal Lahoti Portfolio Exhibition Wall Artworks
-    const texCh1Living = textureLoader.load("/assets/exhibition/ch1_living.jpg");
-    const texCh1Dining = textureLoader.load("/assets/exhibition/ch1_dining.jpg");
-    const texCh1Parlour = textureLoader.load("/assets/exhibition/ch1_parlour.jpg");
-    const texCh1Lounge = textureLoader.load("/assets/exhibition/ch1_lounge.jpg");
-    const texCh1Media = textureLoader.load("/assets/exhibition/ch1_media.jpg");
+    const texCh1Living = loadMural("/assets/exhibition/ch1_living.jpg");
+    const texCh1Dining = loadMural("/assets/exhibition/ch1_dining.jpg");
+    const texCh1Parlour = loadMural("/assets/exhibition/ch1_parlour.jpg");
+    const texCh1Lounge = loadMural("/assets/exhibition/ch1_lounge.jpg");
+    const texCh1Media = loadMural("/assets/exhibition/ch1_media.jpg");
 
-    const texCh2WoodBed = textureLoader.load("/assets/exhibition/ch2_woodbed.jpg");
-    const texCh2Bed1 = textureLoader.load("/assets/exhibition/ch2_bed1.jpg");
-    const texCh2Vanity = textureLoader.load("/assets/exhibition/ch2_vanity.jpg");
-    const texCh2Emerald = textureLoader.load("/assets/exhibition/ch2_emerald.jpg");
-    const texCh2Linear = textureLoader.load("/assets/exhibition/ch2_linear.jpg");
+    const texCh2WoodBed = loadMural("/assets/exhibition/ch2_woodbed.jpg");
+    const texCh2Bed1 = loadMural("/assets/exhibition/ch2_bed1.jpg");
+    const texCh2Vanity = loadMural("/assets/exhibition/ch2_vanity.jpg");
+    const texCh2Emerald = loadMural("/assets/exhibition/ch2_emerald.jpg");
+    const texCh2Linear = loadMural("/assets/exhibition/ch2_linear.jpg");
 
-    const texCh3Classic = textureLoader.load("/assets/exhibition/ch3_mandir_classic.jpg");
-    const texCh3Stone = textureLoader.load("/assets/exhibition/ch3_stone_altar.jpg");
-    const texCh3Courtyard = textureLoader.load("/assets/exhibition/ch3_courtyard.jpg");
-    const texCh3Foyer = textureLoader.load("/assets/exhibition/ch3_foyer.jpg");
-    const texCh3Portal = textureLoader.load("/assets/exhibition/ch3_portal.jpg");
+    const texCh3Classic = loadMural("/assets/exhibition/ch3_mandir_classic.jpg");
+    const texCh3Stone = loadMural("/assets/exhibition/ch3_stone_altar.jpg");
+    const texCh3Courtyard = loadMural("/assets/exhibition/ch3_courtyard.jpg");
+    const texCh3Foyer = loadMural("/assets/exhibition/ch3_foyer.jpg");
+    const texCh3Portal = loadMural("/assets/exhibition/ch3_portal.jpg");
 
-    const texCh4Boardroom = textureLoader.load("/assets/exhibition/ch4_boardroom.jpg");
-    const texCh4SkyLounge = textureLoader.load("/assets/exhibition/ch4_skylounge.jpg");
-    const texCh4Dining = textureLoader.load("/assets/exhibition/ch4_dining.jpg");
-    const texCh4Vip = textureLoader.load("/assets/exhibition/ch4_vip.jpg");
-    const texCh4Terrace = textureLoader.load("/assets/exhibition/ch4_terrace.jpg");
+    const texCh4Boardroom = loadMural("/assets/exhibition/ch4_boardroom.jpg");
+    const texCh4SkyLounge = loadMural("/assets/exhibition/ch4_skylounge.jpg");
+    const texCh4Dining = loadMural("/assets/exhibition/ch4_dining.jpg");
+    const texCh4Vip = loadMural("/assets/exhibition/ch4_vip.jpg");
+    const texCh4Terrace = loadMural("/assets/exhibition/ch4_terrace.jpg");
 
     // Bespoke Chamber PBR Materials & Textures
     const boucleDiffTex = textureLoader.load("/assets/textures/boucle_fabric.jpg");
