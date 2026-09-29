@@ -466,17 +466,35 @@ export default function ThreeMansionEngine() {
     cofferDiffTex.colorSpace = THREE.SRGBColorSpace;
     const cofferNormTex = textureLoader.load("/assets/textures/champagne_gold_coffer_normal.jpg");
 
-    // Gallery Art textures (8 curated client portfolio masterpieces)
-    const artTex1 = textureLoader.load("/assets/gallery/art1.jpg");
-    const artTex2 = textureLoader.load("/assets/gallery/art2.jpg");
-    const artTex3 = textureLoader.load("/assets/gallery/art3.jpg");
-    const artTex4 = textureLoader.load("/assets/gallery/art4.jpg");
-    const artTex5 = textureLoader.load("/assets/gallery/art5.jpg");
-    const artTex6 = textureLoader.load("/assets/gallery/art6.jpg");
-    const artTex7 = textureLoader.load("/assets/gallery/art7.jpg");
-    const artTex8 = textureLoader.load("/assets/gallery/art8.jpg");
-    [artTex1, artTex2, artTex3, artTex4, artTex5, artTex6, artTex7, artTex8].forEach((t) => {
+    // Curated 4K Grand Hallway Exhibition Murals (from master lahoti content portfolio)
+    const muralTex1 = textureLoader.load("/assets/hallway_murals/mural_01.jpg");
+    const muralTex2 = textureLoader.load("/assets/hallway_murals/mural_02.jpg");
+    const muralTex3 = textureLoader.load("/assets/hallway_murals/mural_03.jpg");
+    const muralTex4 = textureLoader.load("/assets/hallway_murals/mural_04.jpg");
+    const muralTex5 = textureLoader.load("/assets/hallway_murals/mural_05.jpg");
+    const muralTex6 = textureLoader.load("/assets/hallway_murals/mural_06.jpg");
+    const muralTex7 = textureLoader.load("/assets/hallway_murals/mural_07.jpg");
+    const muralTex8 = textureLoader.load("/assets/hallway_murals/mural_08.jpg");
+    const muralTex9 = textureLoader.load("/assets/hallway_murals/mural_09.jpg");
+    const muralTex10 = textureLoader.load("/assets/hallway_murals/mural_10.jpg");
+    const muralTex11 = textureLoader.load("/assets/hallway_murals/mural_11.jpg");
+    const muralTex12 = textureLoader.load("/assets/hallway_murals/mural_12.jpg");
+    const muralTex13 = textureLoader.load("/assets/hallway_murals/mural_13.jpg");
+    const muralTex14 = textureLoader.load("/assets/hallway_murals/mural_14.jpg");
+    const muralTex15 = textureLoader.load("/assets/hallway_murals/mural_15.jpg");
+    const muralTex16 = textureLoader.load("/assets/hallway_murals/mural_16.jpg");
+
+    const allMuralTextures = [
+      muralTex1, muralTex2, muralTex3, muralTex4,
+      muralTex5, muralTex6, muralTex7, muralTex8,
+      muralTex9, muralTex10, muralTex11, muralTex12,
+      muralTex13, muralTex14, muralTex15, muralTex16,
+    ];
+    allMuralTextures.forEach((t) => {
       t.colorSpace = THREE.SRGBColorSpace;
+      t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.magFilter = THREE.LinearFilter;
+      t.generateMipmaps = true;
     });
 
     // Chamber Photography Renders
@@ -2293,53 +2311,52 @@ export default function ThreeMansionEngine() {
       scene.add(sconceGroup);
     };
 
-    // Instantiate Curated Luxury 3D Sconces alternating along the hall
-    createLuxurySconce(-hallWidth / 2, 3.8, 12, 1);
-    createLuxurySconce(hallWidth / 2, 3.8, 12, -1);
-    createLuxurySconce(-hallWidth / 2, 3.8, -10, 1);
-    createLuxurySconce(hallWidth / 2, 3.8, -12, -1);
-    createLuxurySconce(-hallWidth / 2, 3.8, -42, 1);
-    createLuxurySconce(hallWidth / 2, 3.8, -48, -1);
-    createLuxurySconce(-hallWidth / 2, 3.8, -66, 1);
-    createLuxurySconce(hallWidth / 2, 3.8, -68, -1);
-    createLuxurySconce(-hallWidth / 2, 3.8, -94, 1);
-    createLuxurySconce(hallWidth / 2, 3.8, -88, -1);
-    createLuxurySconce(-hallWidth / 2, 3.8, -112, 1);
-    createLuxurySconce(hallWidth / 2, 3.8, -112, -1);
+    // Instantiate Curated Luxury 3D Sconces at Doorway Piers & Architectural Junctions
+    createLuxurySconce(-hallWidth / 2, 3.8, 12.0, 1);
+    createLuxurySconce(hallWidth / 2, 3.8, 12.0, -1);
+    createLuxurySconce(-hallWidth / 2, 3.8, -16.5, 1);
+    createLuxurySconce(-hallWidth / 2, 3.8, -23.5, 1);
+    createLuxurySconce(hallWidth / 2, 3.8, -41.5, -1);
+    createLuxurySconce(hallWidth / 2, 3.8, -48.5, -1);
+    createLuxurySconce(-hallWidth / 2, 3.8, -66.5, 1);
+    createLuxurySconce(-hallWidth / 2, 3.8, -73.5, 1);
+    createLuxurySconce(hallWidth / 2, 3.8, -91.5, -1);
+    createLuxurySconce(hallWidth / 2, 3.8, -98.5, -1);
 
-    // --- 3D MUSEUM FRAMED GALLERY ART & PICTURE LIGHTS (SHARED BUFFER GEOMETRIES) ---
+    // --- 3D MONUMENTAL 2-BLOCK WIDE EXHIBITION MURALS & TRIPLE PICTURE LIGHTS ---
     const museumGlassMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0.10,
+      opacity: 0.08,
       roughness: 0.04,
       metalness: 0.22,
       depthWrite: false,
     });
 
-    const artWidth = 3.2;
-    const artHeight = 2.2;
-    const artRailDepth = 0.14;
-    const artRailWidth = 0.09;
-    const artMatBorder = 0.12;
-    const artOuterWidth = artWidth + artMatBorder * 2 + artRailWidth * 2;
-    const artOuterHeight = artHeight + artMatBorder * 2 + artRailWidth * 2;
-    const artInnerW = artOuterWidth - artRailWidth * 2;
-    const artInnerH = artOuterHeight - artRailWidth * 2;
-    const artFilletDepth = 0.04;
-    const artFilletWidth = 0.02;
+    // 2-Block Wide Monumental Dimensions (Spans across 2 whole wall blocks/bays)
+    const muralCanvasW = 6.80; // 6.8m wide (2 full wall bays)
+    const muralCanvasH = 3.40; // 3.4m high (fills upper wall field from Y=1.75 to Y=5.15)
+    const muralRailDepth = 0.12;
+    const muralRailWidth = 0.10;
+    const muralMatBorder = 0.08;
+    const muralOuterWidth = muralCanvasW + muralMatBorder * 2 + muralRailWidth * 2; // 7.16m
+    const muralOuterHeight = muralCanvasH + muralMatBorder * 2 + muralRailWidth * 2; // 3.76m
+    const muralInnerW = muralOuterWidth - muralRailWidth * 2; // 6.96m
+    const muralInnerH = muralOuterHeight - muralRailWidth * 2; // 3.56m
+    const muralFilletDepth = 0.04;
+    const muralFilletWidth = 0.025;
 
-    const sharedArtDropShadowGeo = new THREE.PlaneGeometry(artOuterWidth + 0.35, artOuterHeight + 0.35);
-    const sharedArtTopBottomRailGeo = new THREE.BoxGeometry(artRailDepth, artRailWidth, artOuterWidth);
-    const sharedArtLeftRightRailGeo = new THREE.BoxGeometry(artRailDepth, artOuterHeight - artRailWidth * 2, artRailWidth);
-    const sharedArtFrontMoldingGeo = new THREE.BoxGeometry(0.015, artRailWidth - 0.02, artOuterWidth);
-    const sharedArtFilletTopBottomGeo = new THREE.BoxGeometry(artFilletDepth, artFilletWidth, artInnerW);
-    const sharedArtFilletLeftRightGeo = new THREE.BoxGeometry(artFilletDepth, artInnerH - artFilletWidth * 2, artFilletWidth);
-    const sharedArtMatGeo = new THREE.PlaneGeometry(artInnerW, artInnerH);
-    const sharedArtCanvasGeo = new THREE.PlaneGeometry(artWidth, artHeight);
-    const sharedArtGlassGeo = new THREE.PlaneGeometry(artInnerW - 0.01, artInnerH - 0.01);
-    const sharedArtArmGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.42);
-    const sharedArtHoodGeo = new THREE.CylinderGeometry(0.045, 0.045, artWidth * 0.72, 20);
+    const sharedMuralDropShadowGeo = new THREE.PlaneGeometry(muralOuterWidth + 0.40, muralOuterHeight + 0.40);
+    const sharedMuralTopBottomRailGeo = new THREE.BoxGeometry(muralRailDepth, muralRailWidth, muralOuterWidth);
+    const sharedMuralLeftRightRailGeo = new THREE.BoxGeometry(muralRailDepth, muralOuterHeight - muralRailWidth * 2, muralRailWidth);
+    const sharedMuralFrontMoldingGeo = new THREE.BoxGeometry(0.015, muralRailWidth - 0.02, muralOuterWidth);
+    const sharedMuralFilletTopBottomGeo = new THREE.BoxGeometry(muralFilletDepth, muralFilletWidth, muralInnerW);
+    const sharedMuralFilletLeftRightGeo = new THREE.BoxGeometry(muralFilletDepth, muralInnerH - muralFilletWidth * 2, muralFilletWidth);
+    const sharedMuralMatGeo = new THREE.PlaneGeometry(muralInnerW, muralInnerH);
+    const sharedMuralCanvasGeo = new THREE.PlaneGeometry(muralCanvasW, muralCanvasH);
+    const sharedMuralGlassGeo = new THREE.PlaneGeometry(muralInnerW - 0.01, muralInnerH - 0.01);
+    const sharedMuralArmGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.44);
+    const sharedMuralHoodGeo = new THREE.CylinderGeometry(0.045, 0.045, 1.80, 20);
 
     const artLinenMat = new THREE.MeshStandardMaterial({
       color: 0xf3ede3,
@@ -2354,7 +2371,7 @@ export default function ThreeMansionEngine() {
       metalness: 0.55,
     });
 
-    const createGalleryArtwork = (
+    const createMonumental2BlockMural = (
       x: number,
       y: number,
       z: number,
@@ -2364,57 +2381,57 @@ export default function ThreeMansionEngine() {
       const artGroup = new THREE.Group();
       artGroup.position.set(x, y, z);
 
-      // 1. Drop shadow behind frame
-      const dropShadow = new THREE.Mesh(sharedArtDropShadowGeo, contactShadowMat);
+      // 1. Drop shadow behind monumental frame
+      const dropShadow = new THREE.Mesh(sharedMuralDropShadowGeo, contactShadowMat);
       dropShadow.rotation.y = facingDir * (Math.PI / 2);
       dropShadow.position.set(facingDir * 0.002, 0, 0);
 
-      // 2. Outer Gilded Museum Rails
-      const topRail = new THREE.Mesh(sharedArtTopBottomRailGeo, antiqueGoldMat);
-      topRail.position.set(facingDir * (artRailDepth / 2), (artOuterHeight - artRailWidth) / 2, 0);
+      // 2. Outer Gilded Museum Rails (Antique Gold Bevel Frame)
+      const topRail = new THREE.Mesh(sharedMuralTopBottomRailGeo, antiqueGoldMat);
+      topRail.position.set(facingDir * (muralRailDepth / 2), (muralOuterHeight - muralRailWidth) / 2, 0);
 
-      const bottomRail = new THREE.Mesh(sharedArtTopBottomRailGeo, antiqueGoldMat);
-      bottomRail.position.set(facingDir * (artRailDepth / 2), -(artOuterHeight - artRailWidth) / 2, 0);
+      const bottomRail = new THREE.Mesh(sharedMuralTopBottomRailGeo, antiqueGoldMat);
+      bottomRail.position.set(facingDir * (muralRailDepth / 2), -(muralOuterHeight - muralRailWidth) / 2, 0);
 
-      const leftRail = new THREE.Mesh(sharedArtLeftRightRailGeo, antiqueGoldMat);
-      leftRail.position.set(facingDir * (artRailDepth / 2), 0, -(artOuterWidth - artRailWidth) / 2);
+      const leftRail = new THREE.Mesh(sharedMuralLeftRightRailGeo, antiqueGoldMat);
+      leftRail.position.set(facingDir * (muralRailDepth / 2), 0, -(muralOuterWidth - muralRailWidth) / 2);
 
-      const rightRail = new THREE.Mesh(sharedArtLeftRightRailGeo, antiqueGoldMat);
-      rightRail.position.set(facingDir * (artRailDepth / 2), 0, (artOuterWidth - artRailWidth) / 2);
+      const rightRail = new THREE.Mesh(sharedMuralLeftRightRailGeo, antiqueGoldMat);
+      rightRail.position.set(facingDir * (muralRailDepth / 2), 0, (muralOuterWidth - muralRailWidth) / 2);
 
       // Front stepped gold reveal moldings
-      const frontMoldingTop = new THREE.Mesh(sharedArtFrontMoldingGeo, antiqueGoldMat);
-      frontMoldingTop.position.set(facingDir * (artRailDepth + 0.007), (artOuterHeight - artRailWidth) / 2, 0);
+      const frontMoldingTop = new THREE.Mesh(sharedMuralFrontMoldingGeo, antiqueGoldMat);
+      frontMoldingTop.position.set(facingDir * (muralRailDepth + 0.007), (muralOuterHeight - muralRailWidth) / 2, 0);
 
-      const frontMoldingBottom = new THREE.Mesh(sharedArtFrontMoldingGeo, antiqueGoldMat);
-      frontMoldingBottom.position.set(facingDir * (artRailDepth + 0.007), -(artOuterHeight - artRailWidth) / 2, 0);
+      const frontMoldingBottom = new THREE.Mesh(sharedMuralFrontMoldingGeo, antiqueGoldMat);
+      frontMoldingBottom.position.set(facingDir * (muralRailDepth + 0.007), -(muralOuterHeight - muralRailWidth) / 2, 0);
 
       // 3. Dark Bronze Inner Shadow Fillet
-      const innerFilletTop = new THREE.Mesh(sharedArtFilletTopBottomGeo, darkBronzeMat);
-      innerFilletTop.position.set(facingDir * (artRailDepth - artFilletDepth / 2), (artInnerH - artFilletWidth) / 2, 0);
+      const innerFilletTop = new THREE.Mesh(sharedMuralFilletTopBottomGeo, darkBronzeMat);
+      innerFilletTop.position.set(facingDir * (muralRailDepth - muralFilletDepth / 2), (muralInnerH - muralFilletWidth) / 2, 0);
 
-      const innerFilletBottom = new THREE.Mesh(sharedArtFilletTopBottomGeo, darkBronzeMat);
-      innerFilletBottom.position.set(facingDir * (artRailDepth - artFilletDepth / 2), -(artInnerH - artFilletWidth) / 2, 0);
+      const innerFilletBottom = new THREE.Mesh(sharedMuralFilletTopBottomGeo, darkBronzeMat);
+      innerFilletBottom.position.set(facingDir * (muralRailDepth - muralFilletDepth / 2), -(muralInnerH - muralFilletWidth) / 2, 0);
 
-      const innerFilletLeft = new THREE.Mesh(sharedArtFilletLeftRightGeo, darkBronzeMat);
-      innerFilletLeft.position.set(facingDir * (artRailDepth - artFilletDepth / 2), 0, -(artInnerW - artFilletWidth) / 2);
+      const innerFilletLeft = new THREE.Mesh(sharedMuralFilletLeftRightGeo, darkBronzeMat);
+      innerFilletLeft.position.set(facingDir * (muralRailDepth - muralFilletDepth / 2), 0, -(muralInnerW - muralFilletWidth) / 2);
 
-      const innerFilletRight = new THREE.Mesh(sharedArtFilletLeftRightGeo, darkBronzeMat);
-      innerFilletRight.position.set(facingDir * (artRailDepth - artFilletDepth / 2), 0, (artInnerW - artFilletWidth) / 2);
+      const innerFilletRight = new THREE.Mesh(sharedMuralFilletLeftRightGeo, darkBronzeMat);
+      innerFilletRight.position.set(facingDir * (muralRailDepth - muralFilletDepth / 2), 0, (muralInnerW - muralFilletWidth) / 2);
 
-      // 4. Archival Off-White Linen Matting
-      const matMesh = new THREE.Mesh(sharedArtMatGeo, artLinenMat);
+      // 4. Archival Off-White Linen Matting Margin
+      const matMesh = new THREE.Mesh(sharedMuralMatGeo, artLinenMat);
       matMesh.rotation.y = facingDir * (Math.PI / 2);
       matMesh.position.set(facingDir * 0.035, 0, 0);
 
-      // 5. Artwork Canvas (with gallery lighting illumination)
+      // 5. Crystal-Clear 4K Master Artwork Canvas (with uniform museum illumination)
       const canvasMesh = new THREE.Mesh(
-        sharedArtCanvasGeo,
+        sharedMuralCanvasGeo,
         new THREE.MeshStandardMaterial({
           map: tex,
           emissiveMap: tex,
           emissive: 0xffffff,
-          emissiveIntensity: 0.35, // Museum picture-light illumination
+          emissiveIntensity: 0.38, // Museum picture-light illumination for 100% crystal clarity
           roughness: 0.35,
           metalness: 0.02,
           side: THREE.DoubleSide,
@@ -2424,115 +2441,79 @@ export default function ThreeMansionEngine() {
       canvasMesh.position.set(facingDir * 0.055, 0, 0);
 
       // 6. Protective Museum Glass Pane
-      const glassPane = new THREE.Mesh(sharedArtGlassGeo, museumGlassMat);
+      const glassPane = new THREE.Mesh(sharedMuralGlassGeo, museumGlassMat);
       glassPane.rotation.y = facingDir * (Math.PI / 2);
       glassPane.position.set(facingDir * 0.082, 0, 0);
 
-      // 7. Overhead Brass Gallery Picture Light Fixture
-      const lightY = artOuterHeight / 2 + 0.32;
-      const arm1 = new THREE.Mesh(sharedArtArmGeo, antiqueGoldMat);
-      arm1.rotation.z = facingDir * (Math.PI / 2);
-      arm1.position.set(facingDir * 0.21, lightY, -artWidth * 0.26);
+      // 7. Triple Overhead Brass Gallery Picture Light Fixtures across the 6.8m span
+      const lightY = muralOuterHeight / 2 + 0.32;
+      for (const offsetZ of [-2.1, 0, 2.1]) {
+        const arm1 = new THREE.Mesh(sharedMuralArmGeo, antiqueGoldMat);
+        arm1.rotation.z = facingDir * (Math.PI / 2);
+        arm1.position.set(facingDir * 0.22, lightY, offsetZ - 0.45);
 
-      const arm2 = new THREE.Mesh(sharedArtArmGeo, antiqueGoldMat);
-      arm2.rotation.z = facingDir * (Math.PI / 2);
-      arm2.position.set(facingDir * 0.21, lightY, artWidth * 0.26);
+        const arm2 = new THREE.Mesh(sharedMuralArmGeo, antiqueGoldMat);
+        arm2.rotation.z = facingDir * (Math.PI / 2);
+        arm2.position.set(facingDir * 0.22, lightY, offsetZ + 0.45);
 
-      const lampHood = new THREE.Mesh(sharedArtHoodGeo, artLampHoodMat);
-      lampHood.rotation.x = Math.PI / 2;
-      lampHood.position.set(facingDir * 0.42, lightY, 0);
+        const lampHood = new THREE.Mesh(sharedMuralHoodGeo, artLampHoodMat);
+        lampHood.rotation.x = Math.PI / 2;
+        lampHood.position.set(facingDir * 0.44, lightY, offsetZ);
+
+        artGroup.add(arm1, arm2, lampHood);
+      }
 
       artGroup.add(
         dropShadow,
         topRail, bottomRail, leftRail, rightRail,
         frontMoldingTop, frontMoldingBottom,
         innerFilletTop, innerFilletBottom, innerFilletLeft, innerFilletRight,
-        matMesh, canvasMesh, glassPane,
-        arm1, arm2, lampHood
+        matMesh, canvasMesh, glassPane
       );
       scene.add(artGroup);
     };
 
-    // Place Curated Gallery Pieces along both walls (12 pieces, rhythmically spaced)
-    // Left Wall (facingDir = 1, X = -hallWidth/2)
-    createGalleryArtwork(-hallWidth / 2, 3.8, 6.0, 1, artTex5);
-    createGalleryArtwork(-hallWidth / 2, 3.8, -8.0, 1, artTex1);
-    createGalleryArtwork(-hallWidth / 2, 3.8, -32.0, 1, artTex2);
-    createGalleryArtwork(-hallWidth / 2, 3.8, -54.0, 1, artTex6);
-    createGalleryArtwork(-hallWidth / 2, 3.8, -82.0, 1, artTex4);
-    createGalleryArtwork(-hallWidth / 2, 3.8, -104.0, 1, artTex7);
+    // Place 2-Block Wide 4K Monumental Exhibition Murals along both walls
+    // LEFT WALL (facingDir = 1, X = -hallWidth/2) - 2 Blocks Per Image
+    // Section 1: Entry to Chamber 1 (Z = +10 to -16)
+    createMonumental2BlockMural(-hallWidth / 2, 3.65, 8.5, 1, muralTex1);   // Double-Height Living Suite (Bays 1-2)
+    createMonumental2BlockMural(-hallWidth / 2, 3.65, 1.0, 1, muralTex2);   // Royal Velvet Dining Hall (Bays 3-4)
+    createMonumental2BlockMural(-hallWidth / 2, 3.65, -6.5, 1, muralTex3);  // Master Bedroom Recliner Suite (Bays 5-6)
+    // [Portal I at Z = -20: Chamber 1 Entry - leaves 3.6m clean clearance]
+    // Section 2: Between Chamber 1 and Chamber 3 (Z = -26 to -64)
+    createMonumental2BlockMural(-hallWidth / 2, 3.65, -27.5, 1, muralTex4); // Master Bedroom Vanity
+    createMonumental2BlockMural(-hallWidth / 2, 3.65, -35.0, 1, muralTex5); // Parents Classical Bedroom
+    createMonumental2BlockMural(-hallWidth / 2, 3.65, -42.5, 1, muralTex6); // Parents Velvet Lounge
+    createMonumental2BlockMural(-hallWidth / 2, 3.65, -50.0, 1, muralTex7); // Coral Velvet Pooja Mandir
+    createMonumental2BlockMural(-hallWidth / 2, 3.65, -57.5, 1, muralTex8); // Sacred Mandir Jali Suite
+    // [Portal III at Z = -70: Chamber 3 Entry]
+    // Section 3: After Chamber 3 (Z = -76 to -115)
+    createMonumental2BlockMural(-hallWidth / 2, 3.65, -77.5, 1, muralTex9);  // Luxury Guest Suite
+    createMonumental2BlockMural(-hallWidth / 2, 3.65, -85.0, 1, muralTex10); // Architectural Silk Guest Lounge
+    createMonumental2BlockMural(-hallWidth / 2, 3.65, -92.5, 1, muralTex11); // Master Penthouse Suite
+    createMonumental2BlockMural(-hallWidth / 2, 3.65, -100.0, 1, muralTex12); // Grand Panoramic Living
+    createMonumental2BlockMural(-hallWidth / 2, 3.65, -107.5, 1, muralTex13); // Royal Dining Suite
 
-    // Right Wall (facingDir = -1, X = hallWidth/2)
-    createGalleryArtwork(hallWidth / 2, 3.8, 6.0, -1, artTex3);
-    createGalleryArtwork(hallWidth / 2, 3.8, -6.0, -1, artTex8);
-    createGalleryArtwork(hallWidth / 2, 3.8, -34.0, -1, artTex1);
-    createGalleryArtwork(hallWidth / 2, 3.8, -58.0, -1, artTex3);
-    createGalleryArtwork(hallWidth / 2, 3.8, -82.0, -1, artTex5);
-    createGalleryArtwork(hallWidth / 2, 3.8, -106.0, -1, artTex2);
-
-    // --- CURATED CONSOLE TABLES (BREAKING UP MONOTONY) ---
-    // 1. Calacatta Marble Console Table with Arched Mirror at Z = -22 (Right Wall)
-    const console1Group = new THREE.Group();
-    console1Group.position.set(hallWidth / 2, 0, -22);
-
-    const shelf1 = new THREE.Mesh(
-      new THREE.BoxGeometry(0.65, 0.12, 2.6),
-      calacattaConsoleMat
-    );
-    shelf1.position.set(-0.325, 1.25, 0);
-
-    const bracket1 = new THREE.Mesh(
-      new THREE.BoxGeometry(0.45, 0.45, 0.06),
-      antiqueGoldMat
-    );
-    bracket1.position.set(-0.225, 0.95, -0.9);
-    const bracket2 = new THREE.Mesh(
-      new THREE.BoxGeometry(0.45, 0.45, 0.06),
-      antiqueGoldMat
-    );
-    bracket2.position.set(-0.225, 0.95, 0.9);
-
-    const console1MirrorFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(0.06, 2.2, 1.6),
-      antiqueGoldMat
-    );
-    console1MirrorFrame.position.set(-0.03, 2.7, 0);
-
-    const console1MirrorGlass = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.4, 2.0),
-      mirrorMat
-    );
-    console1MirrorGlass.rotation.y = -Math.PI / 2;
-    console1MirrorGlass.position.set(-0.065, 2.7, 0);
-
-    const vase = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.18, 0.1, 0.5, 24),
-      antiqueGoldMat
-    );
-    vase.position.set(-0.3, 1.56, 0.5);
-
-    console1Group.add(shelf1, bracket1, bracket2, console1MirrorFrame, console1MirrorGlass, vase);
-    scene.add(console1Group);
-
-    // 2. Dark Bronze & Stone Console Table at Z = -78 (Right Wall)
-    const console2Group = new THREE.Group();
-    console2Group.position.set(hallWidth / 2, 0, -78);
-
-    const shelf2 = new THREE.Mesh(
-      new THREE.BoxGeometry(0.65, 0.12, 2.4),
-      darkBronzeMat
-    );
-    shelf2.position.set(-0.325, 1.25, 0);
-
-    const miniSculpture = new THREE.Mesh(
-      new THREE.TorusGeometry(0.24, 0.04, 16, 32),
-      antiqueGoldMat
-    );
-    miniSculpture.position.set(-0.3, 1.62, 0);
-    miniSculpture.rotation.x = Math.PI / 4;
-
-    console2Group.add(shelf2, miniSculpture);
-    scene.add(console2Group);
+    // RIGHT WALL (facingDir = -1, X = hallWidth/2) - 2 Blocks Per Image
+    // Section 1: Entry to Chamber 2 (Z = +10 to -40)
+    createMonumental2BlockMural(hallWidth / 2, 3.65, 8.5, -1, muralTex14);  // Executive Library Lounge
+    createMonumental2BlockMural(hallWidth / 2, 3.65, 1.0, -1, muralTex15);  // Master Bedroom Spa Suite
+    createMonumental2BlockMural(hallWidth / 2, 3.65, -6.5, -1, muralTex16); // Bespoke Walk-in Wardrobe
+    createMonumental2BlockMural(hallWidth / 2, 3.65, -14.0, -1, muralTex1); // Double-Height Grand Living
+    createMonumental2BlockMural(hallWidth / 2, 3.65, -21.5, -1, muralTex2); // Royal Velvet Dining Hall
+    createMonumental2BlockMural(hallWidth / 2, 3.65, -29.0, -1, muralTex3); // Master Bedroom Recliner Suite
+    createMonumental2BlockMural(hallWidth / 2, 3.65, -36.5, -1, muralTex4); // Master Bedroom Vanity
+    // [Portal II at Z = -45: Chamber 2 Entry]
+    // Section 2: Between Chamber 2 and Chamber 4 (Z = -51 to -89)
+    createMonumental2BlockMural(hallWidth / 2, 3.65, -52.5, -1, muralTex5); // Parents Classical Bedroom
+    createMonumental2BlockMural(hallWidth / 2, 3.65, -60.0, -1, muralTex6); // Parents Velvet Lounge
+    createMonumental2BlockMural(hallWidth / 2, 3.65, -67.5, -1, muralTex7); // Coral Velvet Pooja Mandir
+    createMonumental2BlockMural(hallWidth / 2, 3.65, -75.0, -1, muralTex8); // Sacred Mandir Jali Suite
+    createMonumental2BlockMural(hallWidth / 2, 3.65, -82.5, -1, muralTex9); // Luxury Guest Suite
+    // [Portal IV at Z = -95: Chamber 4 Entry]
+    // Section 3: After Chamber 4 (Z = -101 to -115)
+    createMonumental2BlockMural(hallWidth / 2, 3.65, -102.5, -1, muralTex10); // Architectural Silk Guest Lounge
+    createMonumental2BlockMural(hallWidth / 2, 3.65, -110.0, -1, muralTex11); // Master Penthouse Suite
 
     // --- CORRIDOR WALLS & INSTANCED BOISERIE PANEL SYSTEM (2 DRAW CALLS TOTAL) ---
     const unitBoxGeo = new THREE.BoxGeometry(1, 1, 1);
@@ -5587,8 +5568,7 @@ export default function ThreeMansionEngine() {
       runnerRugTex,
       fineLimestoneTex,
       honeyFlutedOakTex,
-      brassTex,
-      artTex1, artTex2, artTex3, artTex4, artTex5, artTex6, artTex7, artTex8,
+      ...allMuralTextures,
       texGrand, texVersace, texSacred, texCorporate,
       texGrandDetail, texVersaceDetail, texSacredDetail, texCorporateDetail,
     ];
