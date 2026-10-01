@@ -31,13 +31,13 @@ interface ChamberInfo {
 const CHAMBER_DATA: ChamberInfo[] = [
   {
     id: "grand",
-    chapterNum: "CHAMBER I/IV",
+    chapterNum: "CHAMBER I/VI",
     title1: "GRAND",
     title2: "LIVING",
     subtitle: "Italian Black Marble & Double-Height Ambient Lounges",
     location: "Koregaon Park Estate, Pune",
     sqft: "5,400 SQ. FT.",
-    heroProgress: 0.22,
+    heroProgress: 0.15,
     specs: {
       description:
         "A double-height living sanctuary defined by continuous Italian Nero Marquina black marble floors, monolithic coffee tables, bespoke beige modular sofa lounges, and layered sheer drapery.",
@@ -47,13 +47,13 @@ const CHAMBER_DATA: ChamberInfo[] = [
   },
   {
     id: "versace",
-    chapterNum: "CHAMBER II/IV",
+    chapterNum: "CHAMBER II/VI",
     title1: "VERSACE",
     title2: "SUITE",
     subtitle: "Acoustic Oak Paneling & Tailored Leather Headboard",
     location: "Worli Sea Face, Mumbai",
     sqft: "850 SQ. FT.",
-    heroProgress: 0.50,
+    heroProgress: 0.32,
     specs: {
       description:
         "An opulent master chamber clad in acoustic vertical fluted natural oak paneling with continuous Italian Nero Marquina black marble floors, an upholstered burgundy leather headboard, and designer drop pendant spotlights.",
@@ -63,13 +63,13 @@ const CHAMBER_DATA: ChamberInfo[] = [
   },
   {
     id: "sacred",
-    chapterNum: "CHAMBER III/IV",
+    chapterNum: "CHAMBER III/VI",
     title1: "SACRED",
     title2: "SANCTUM",
     subtitle: "Illuminated Onyx Halo & Gayatri Mantra Wall Art",
     location: "Amanora Park Town, Pune",
     sqft: "450 SQ. FT.",
-    heroProgress: 0.72,
+    heroProgress: 0.49,
     specs: {
       description:
         "A contemporary spiritual sanctum featuring continuous Italian Nero Marquina black marble floors, laser-etched Sanskrit Gayatri Mantra wall typography, a glowing backlit halo deity backdrop, and fluted timber ceilings.",
@@ -79,18 +79,50 @@ const CHAMBER_DATA: ChamberInfo[] = [
   },
   {
     id: "corporate",
-    chapterNum: "CHAMBER IV/IV",
-    title1: "CORPORATE",
-    title2: "RECEPTION",
-    subtitle: "Italian Black Marble & Sculptural Bronze Reception",
+    chapterNum: "CHAMBER IV/VI",
+    title1: "EXECUTIVE",
+    title2: "BOARDROOM",
+    subtitle: "Italian Black Marble & Presidential Executive Suites",
     location: "BKC Commercial Hub, Mumbai",
     sqft: "3,800 SQ. FT.",
-    heroProgress: 0.94,
+    heroProgress: 0.66,
     specs: {
       description:
-        "A commanding corporate entrance defined by monolithic Italian Nero Marquina black marble floors, a sculptural bronze reception counter, executive club seating, and fluted architectural glass.",
-      materials: ["Italian Nero Marquina Marble", "Patinated Bronze Finish", "Burgundy Velvet Upholstery"],
-      details: ["Sculptural Reception Counter", "Integrated Toe-Kick Glow", "Fluted Privacy Glass"],
+        "A commanding corporate executive boardroom and managing director suite defined by monolithic Italian Nero Marquina black marble floors, book-matched walnut millwork, ergonomic executive seating, and architectural lighting grids.",
+      materials: ["Italian Nero Marquina Marble", "Book-matched Walnut", "Cognac Saddle Leather"],
+      details: ["Sculptural Conference Tables", "Integrated Linear Diffusers", "Acoustic Glass Partitions"],
+    },
+  },
+  {
+    id: "royal_living",
+    chapterNum: "CHAMBER V/VI",
+    title1: "ROYAL",
+    title2: "SALON",
+    subtitle: "Backlit Marble Media Wall & Cantilevered Floating Staircase",
+    location: "Koregaon Park Estate, Pune",
+    sqft: "4,600 SQ. FT.",
+    heroProgress: 0.83,
+    specs: {
+      description:
+        "A dramatic second living salon highlighting a monumental backlit Statuario marble media wall, cantilevered floating steps with warm riser illumination, emerald and ruby velvet lounges, and floor-to-ceiling double-height glazing.",
+      materials: ["Backlit Italian Marble", "Smoked Oak Millwork", "Belgian Emerald Velvet"],
+      details: ["Floating Cantilever Staircase", "Recessed Riser Lighting", "Architectural Cocktail Tables"],
+    },
+  },
+  {
+    id: "corporate_lobby",
+    chapterNum: "CHAMBER VI/VI",
+    title1: "CORPORATE",
+    title2: "RECEPTION",
+    subtitle: "Sculptural Brass Concierge & Chevron Timber Foyer",
+    location: "BKC Commercial Hub, Mumbai",
+    sqft: "3,200 SQ. FT.",
+    heroProgress: 0.97,
+    specs: {
+      description:
+        "An opulent corporate reception and hospitality lobby defined by a custom sculptural brushed brass concierge desk, illuminated backlit corporate insignia on handcrafted chevron timber walls, and executive visitor waiting salons.",
+      materials: ["Brushed Brass Concierge Counter", "Chevron Oak Paneling", "Fluted Architectural Glass"],
+      details: ["Backlit Metallic Insignia", "Integrated Toe-Kick Wash", "Acoustic Meeting Portals"],
     },
   },
 ];
@@ -106,13 +138,38 @@ export default function ThreeMansionEngine() {
   const [showSpecs, setShowSpecs] = useState(false);
   const [showExhibition, setShowExhibition] = useState(false);
   const [inspectedArtwork, setInspectedArtwork] = useState<ExhibitionArtwork | null>(null);
+  const [activeArtworks, setActiveArtworks] = useState<Record<string, string>>({
+    grand: "ch1_living",
+    versace: "ch2_woodbed",
+    sacred: "ch3_mandir_classic",
+    corporate: "ch4_boardroom",
+    royal_living: "ch5_living",
+    corporate_lobby: "ch6_reception",
+  });
   const [isMuted, setIsMuted] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
 
+  // References for live 3D wall hero canvas meshes & materials
+  const heroArtRefs = useRef<
+    Record<
+      string,
+      {
+        group: THREE.Group;
+        canvasMesh: THREE.Mesh;
+        canvasMat: THREE.MeshStandardMaterial;
+        plaqueMesh: THREE.Mesh;
+      }
+    >
+  >({});
+  const chamberArtworkTexturesRef = useRef<Record<string, THREE.Texture>>({});
+
   // Grand Entrance Door Opening Sequence State
   const [doorState, setDoorState] = useState<"loading" | "ready" | "opening" | "opened">("loading");
   const [isDoorOpen, setIsDoorOpen] = useState(false);
+  const [isLightingSequence, setIsLightingSequence] = useState(false);
+  const [doorUIFading, setDoorUIFading] = useState(false);
+  const [doorUIHidden, setDoorUIHidden] = useState(false);
 
   const doorAnimationRef = useRef<{
     leftPivot: THREE.Group | null;
@@ -121,9 +178,13 @@ export default function ThreeMansionEngine() {
     rightHandle: THREE.Group | null;
     lightFlood: THREE.Mesh | null;
     crackSlit: THREE.Mesh | null;
+    crackGlow: THREE.Mesh | null;
     floorSpill: THREE.Mesh | null;
     doorBacker: THREE.Mesh | null;
     doorGroup: THREE.Group | null;
+    doorKeyLight: THREE.SpotLight | null;
+    doorUplight: THREE.PointLight | null;
+    porticoFill: THREE.SpotLight | null;
     cameraPos: THREE.Vector3;
     cameraLook: THREE.Vector3;
   }>({
@@ -133,15 +194,55 @@ export default function ThreeMansionEngine() {
     rightHandle: null,
     lightFlood: null,
     crackSlit: null,
+    crackGlow: null,
     floorSpill: null,
     doorBacker: null,
     doorGroup: null,
+    doorKeyLight: null,
+    doorUplight: null,
+    porticoFill: null,
     cameraPos: new THREE.Vector3(0, 2.85, 14.5),
     cameraLook: new THREE.Vector3(0, 3.10, 8.2),
   });
 
   const triggerOpenDoorRef = useRef<() => void>(() => {});
   const triggerSkipDoorRef = useRef<() => void>(() => {});
+  const doorTimelineRef = useRef<gsap.core.Timeline | null>(null);
+  const lightingTimelineRef = useRef<gsap.core.Timeline | null>(null);
+
+  const handleSelectArtwork = (chamberId: string, artwork: ExhibitionArtwork) => {
+    setActiveArtworks((prev) => ({ ...prev, [chamberId]: artwork.id }));
+    playSound(380);
+
+    const hero = heroArtRefs.current[chamberId];
+    const newTex = chamberArtworkTexturesRef.current[artwork.id];
+    if (hero && newTex) {
+      gsap.killTweensOf(hero.canvasMat);
+      gsap.to(hero.canvasMat, {
+        opacity: 0.15,
+        duration: 0.14,
+        ease: "power2.in",
+        onComplete: () => {
+          hero.canvasMat.map = newTex;
+          hero.canvasMat.emissiveMap = newTex;
+          hero.canvasMat.needsUpdate = true;
+          gsap.to(hero.canvasMat, {
+            opacity: 1.0,
+            duration: 0.22,
+            ease: "power2.out",
+          });
+        },
+      });
+
+      if (hero.group) {
+        gsap.fromTo(
+          hero.group.scale,
+          { x: 0.992, y: 0.992, z: 0.992 },
+          { x: 1.0, y: 1.0, z: 1.0, duration: 0.35, ease: "back.out(2)" }
+        );
+      }
+    }
+  };
 
   const sceneStateRef = useRef<{
     targetProgress: number;
@@ -151,6 +252,8 @@ export default function ThreeMansionEngine() {
     tilt: { x: number; y: number };
     targetTilt: { x: number; y: number };
     doorState: "loading" | "ready" | "opening" | "opened";
+    isLightingSequence: boolean;
+    introComplete: boolean;
   }>({
     targetProgress: 0,
     currentProgress: 0,
@@ -159,6 +262,8 @@ export default function ThreeMansionEngine() {
     tilt: { x: 0, y: 0 },
     targetTilt: { x: 0, y: 0 },
     doorState: "loading",
+    isLightingSequence: false,
+    introComplete: false,
   });
 
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -317,6 +422,145 @@ export default function ThreeMansionEngine() {
     }
   };
 
+  // --- ARCHITECTURAL LIGHTING SEQUENCE SYNTHESIZERS ---
+  const playRelayClick = (pitch = 1.0, volume = 0.04) => {
+    if (isMuted) return;
+    try {
+      const ctx = getAudioContext();
+      const t = ctx.currentTime;
+
+      // 1. High crisp armature contact tick (ultra-short 12ms impulse)
+      const tickOsc = ctx.createOscillator();
+      const tickGain = ctx.createGain();
+      const tickFilter = ctx.createBiquadFilter();
+
+      tickOsc.type = "sine";
+      tickOsc.frequency.setValueAtTime(2200 * pitch, t);
+      tickOsc.frequency.exponentialRampToValueAtTime(450 * pitch, t + 0.012);
+
+      tickFilter.type = "highpass";
+      tickFilter.frequency.setValueAtTime(800, t);
+
+      tickGain.gain.setValueAtTime(volume * 0.7, t);
+      tickGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.012);
+
+      tickOsc.connect(tickFilter);
+      tickFilter.connect(tickGain);
+      tickGain.connect(ctx.destination);
+
+      tickOsc.start(t);
+      tickOsc.stop(t + 0.014);
+
+      // 2. Warm magnetic solenoid coil thud (35ms pulse)
+      const coilOsc = ctx.createOscillator();
+      const coilGain = ctx.createGain();
+      const coilFilter = ctx.createBiquadFilter();
+
+      coilOsc.type = "triangle";
+      coilOsc.frequency.setValueAtTime(190 * pitch, t + 0.003);
+      coilOsc.frequency.exponentialRampToValueAtTime(65 * pitch, t + 0.038);
+
+      coilFilter.type = "lowpass";
+      coilFilter.frequency.setValueAtTime(320 * pitch, t + 0.003);
+
+      coilGain.gain.setValueAtTime(volume, t + 0.003);
+      coilGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.038);
+
+      coilOsc.connect(coilFilter);
+      coilFilter.connect(coilGain);
+      coilGain.connect(ctx.destination);
+
+      coilOsc.start(t + 0.003);
+      coilOsc.stop(t + 0.040);
+    } catch (_) {}
+  };
+
+  const startElectricHum = () => {
+    if (isMuted) return { stop: () => {} };
+    try {
+      const ctx = getAudioContext();
+      const t = ctx.currentTime;
+
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(58, t); // 58Hz transformer fundamental
+
+      osc2.type = "triangle";
+      osc2.frequency.setValueAtTime(116, t); // 116Hz second harmonic
+
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(160, t);
+
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.linearRampToValueAtTime(0.024, t + 1.1); // subtle swell matching faster sequence
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(t);
+      osc2.start(t);
+
+      return {
+        stop: () => {
+          try {
+            const stopT = ctx.currentTime;
+            gain.gain.linearRampToValueAtTime(0.0001, stopT + 0.25);
+            setTimeout(() => {
+              try {
+                osc1.stop();
+                osc2.stop();
+              } catch (_) {}
+            }, 280);
+          } catch (_) {}
+        },
+      };
+    } catch (_) {
+      return { stop: () => {} };
+    }
+  };
+
+  const playFullResonanceChime = () => {
+    if (isMuted) return;
+    try {
+      const ctx = getAudioContext();
+      const t = ctx.currentTime;
+
+      // Luxurious 5-note architectural resonance chord (C-maj9 / E-maj9)
+      // Notes: C5 (523.25Hz), E5 (659.25Hz), G5 (783.99Hz), B5 (987.77Hz), D6 (1174.66Hz)
+      const freqs = [523.25, 659.25, 783.99, 987.77, 1174.66];
+
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, t + idx * 0.035);
+        osc.detune.setValueAtTime((idx - 2) * 4, t);
+
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(2800, t);
+
+        gain.gain.setValueAtTime(0.0001, t + idx * 0.035);
+        gain.gain.linearRampToValueAtTime(0.065 - idx * 0.006, t + idx * 0.035 + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + idx * 0.035 + 3.2);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(t + idx * 0.035);
+        osc.stop(t + idx * 0.035 + 3.3);
+      });
+    } catch (_) {}
+  };
+
   const playSound = (freq = 110) => {
     if (isMuted) return;
     try {
@@ -338,6 +582,7 @@ export default function ThreeMansionEngine() {
   };
 
   const flyToChamber = (targetP: number) => {
+    if (sceneStateRef.current.isLightingSequence) return;
     sceneStateRef.current.isSnapping = true;
     playSound(180);
     gsap.to(sceneStateRef.current, {
@@ -424,10 +669,10 @@ export default function ThreeMansionEngine() {
     const italianBlackMarbleTex = textureLoader.load("/assets/textures/italian_black_marble.jpg");
     italianBlackMarbleTex.wrapS = THREE.MirroredRepeatWrapping;
     italianBlackMarbleTex.wrapT = THREE.MirroredRepeatWrapping;
-    italianBlackMarbleTex.repeat.set(4, 24);
+    italianBlackMarbleTex.repeat.set(4, 34);
     italianBlackMarbleTex.colorSpace = THREE.SRGBColorSpace;
 
-    // Pure Italian Black Marble Texture for All 4 Chambers (Seamlessly Connecting with Hallway Floor)
+    // Pure Italian Black Marble Texture for All Chambers (Seamlessly Connecting with Hallway Floor)
     const chamberBlackMarbleTex = textureLoader.load("/assets/textures/italian_black_marble.jpg");
     chamberBlackMarbleTex.wrapS = THREE.MirroredRepeatWrapping;
     chamberBlackMarbleTex.wrapT = THREE.MirroredRepeatWrapping;
@@ -443,7 +688,7 @@ export default function ThreeMansionEngine() {
     const runnerRugTex = textureLoader.load("/assets/textures/runner_rug.jpg");
     runnerRugTex.wrapS = THREE.ClampToEdgeWrapping;
     runnerRugTex.wrapT = THREE.RepeatWrapping;
-    runnerRugTex.repeat.set(1, 14); // Stately Persian palmette medallions
+    runnerRugTex.repeat.set(1, 20); // Stately Persian palmette medallions
     runnerRugTex.colorSpace = THREE.SRGBColorSpace;
 
     const fineLimestoneTex = textureLoader.load("/assets/textures/fine_limestone.jpg");
@@ -472,12 +717,14 @@ export default function ThreeMansionEngine() {
         loaded.colorSpace = THREE.SRGBColorSpace;
         loaded.minFilter = THREE.LinearMipmapLinearFilter;
         loaded.magFilter = THREE.LinearFilter;
+        loaded.anisotropy = 16;
         loaded.generateMipmaps = true;
         loaded.needsUpdate = true;
       });
       t.colorSpace = THREE.SRGBColorSpace;
       t.minFilter = THREE.LinearMipmapLinearFilter;
       t.magFilter = THREE.LinearFilter;
+      t.anisotropy = 16;
       t.generateMipmaps = true;
       return t;
     };
@@ -498,12 +745,22 @@ export default function ThreeMansionEngine() {
     const muralTex14 = loadMural("/assets/hallway_murals/mural_14.jpg");
     const muralTex15 = loadMural("/assets/hallway_murals/mural_15.jpg");
     const muralTex16 = loadMural("/assets/hallway_murals/mural_16.jpg");
+    const muralTex17 = loadMural("/assets/hallway_murals/mural_17.jpg");
+    const muralTex18 = loadMural("/assets/hallway_murals/mural_18.jpg");
+    const muralTex19 = loadMural("/assets/hallway_murals/mural_19.jpg");
+    const muralTex20 = loadMural("/assets/hallway_murals/mural_20.jpg");
+    const muralTex21 = loadMural("/assets/hallway_murals/mural_21.jpg");
+    const muralTex22 = loadMural("/assets/hallway_murals/mural_22.jpg");
+    const muralTex23 = loadMural("/assets/hallway_murals/mural_23.jpg");
+    const muralTex24 = loadMural("/assets/hallway_murals/mural_24.jpg");
 
     const allMuralTextures = [
       muralTex1, muralTex2, muralTex3, muralTex4,
       muralTex5, muralTex6, muralTex7, muralTex8,
       muralTex9, muralTex10, muralTex11, muralTex12,
       muralTex13, muralTex14, muralTex15, muralTex16,
+      muralTex17, muralTex18, muralTex19, muralTex20,
+      muralTex21, muralTex22, muralTex23, muralTex24,
     ];
 
     // Chamber Photography Renders
@@ -515,7 +772,14 @@ export default function ThreeMansionEngine() {
     const texGrandDetail = loadMural("/assets/chambers/chamber1_detail.jpg");
     const texVersaceDetail = loadMural("/assets/chambers/chamber2_detail.jpg");
     const texSacredDetail = loadMural("/assets/chambers/chamber3_detail.jpg");
+    const texSacredLeft = loadMural("/assets/chambers/chamber3_left.jpg");
     const texCorporateDetail = loadMural("/assets/chambers/chamber4_detail.jpg");
+
+    // Chamber V & VI Photography Renders
+    const texCh5Detail = loadMural("/assets/chambers/chamber5_detail.jpg");
+    const texCh5Left = loadMural("/assets/chambers/chamber5_left.jpg");
+    const texCh6Detail = loadMural("/assets/chambers/chamber6_detail.jpg");
+    const texCh6Left = loadMural("/assets/chambers/chamber6_left.jpg");
 
     // Real Gopal Lahoti Portfolio Exhibition Wall Artworks
     const texCh1Living = loadMural("/assets/exhibition/ch1_living.jpg");
@@ -541,6 +805,59 @@ export default function ThreeMansionEngine() {
     const texCh4Dining = loadMural("/assets/exhibition/ch4_dining.jpg");
     const texCh4Vip = loadMural("/assets/exhibition/ch4_vip.jpg");
     const texCh4Terrace = loadMural("/assets/exhibition/ch4_terrace.jpg");
+
+    // Chamber 5: Royal Salon Artworks
+    const texCh5Living = loadMural("/assets/exhibition/ch5_living.jpg");
+    const texCh5Lounge = loadMural("/assets/exhibition/ch5_lounge.jpg");
+    const texCh5Staircase = loadMural("/assets/exhibition/ch5_staircase.jpg");
+    const texCh5Minimalist = loadMural("/assets/exhibition/ch5_minimalist.jpg");
+    const texCh5Velvet = loadMural("/assets/exhibition/ch5_velvet.jpg");
+
+    // Chamber 6: Corporate Reception 2 Artworks
+    const texCh6Reception = loadMural("/assets/exhibition/ch6_reception.jpg");
+    const texCh6Chevron = loadMural("/assets/exhibition/ch6_chevron.jpg");
+    const texCh6Foyer = loadMural("/assets/exhibition/ch6_foyer.jpg");
+    const texCh6Lobby = loadMural("/assets/exhibition/ch6_lobby.jpg");
+    const texCh6Workstation = loadMural("/assets/exhibition/ch6_workstation.jpg");
+
+    // Live texture lookup dictionary for real-time dynamic wall artwork switching
+    chamberArtworkTexturesRef.current = {
+      ch1_living: texCh1Living,
+      ch1_dining: texCh1Dining,
+      ch1_parlour: texCh1Parlour,
+      ch1_lounge: texCh1Lounge,
+      ch1_media: texCh1Media,
+
+      ch2_woodbed: texCh2WoodBed,
+      ch2_bed1: texCh2Bed1,
+      ch2_vanity: texCh2Vanity,
+      ch2_emerald: texCh2Emerald,
+      ch2_linear: texCh2Linear,
+
+      ch3_mandir_classic: texCh3Classic,
+      ch3_stone_altar: texCh3Stone,
+      ch3_courtyard: texCh3Courtyard,
+      ch3_foyer: texCh3Foyer,
+      ch3_portal: texCh3Portal,
+
+      ch4_boardroom: texCh4Boardroom,
+      ch4_skylounge: texCh4SkyLounge,
+      ch4_dining: texCh4Dining,
+      ch4_vip: texCh4Vip,
+      ch4_terrace: texCh4Terrace,
+
+      ch5_living: texCh5Living,
+      ch5_lounge: texCh5Lounge,
+      ch5_staircase: texCh5Staircase,
+      ch5_minimalist: texCh5Minimalist,
+      ch5_velvet: texCh5Velvet,
+
+      ch6_reception: texCh6Reception,
+      ch6_chevron: texCh6Chevron,
+      ch6_foyer: texCh6Foyer,
+      ch6_lobby: texCh6Lobby,
+      ch6_workstation: texCh6Workstation,
+    };
 
     // Bespoke Chamber PBR Materials & Textures
     const boucleDiffTex = textureLoader.load("/assets/textures/boucle_fabric.jpg");
@@ -695,6 +1012,20 @@ export default function ThreeMansionEngine() {
       texCh4Dining,
       texCh4Vip,
       texCh4Terrace,
+      texCh5Living,
+      texCh5Lounge,
+      texCh5Staircase,
+      texCh5Minimalist,
+      texCh5Velvet,
+      texCh5Detail,
+      texCh5Left,
+      texCh6Reception,
+      texCh6Chevron,
+      texCh6Foyer,
+      texCh6Lobby,
+      texCh6Workstation,
+      texCh6Detail,
+      texCh6Left,
       cofferDiffTex,
       boucleDiffTex,
       cognacLeatherDiffTex,
@@ -770,7 +1101,6 @@ export default function ThreeMansionEngine() {
       roughness: 0.14,
       metalness: 0.15,
       color: 0xf5eee2,
-      fog: false,
     });
 
     // Central Runner Rug: Woven velvet runner with Greek key gold embroidery
@@ -778,7 +1108,6 @@ export default function ThreeMansionEngine() {
       map: runnerRugTex,
       roughness: 0.88,
       metalness: 0.02,
-      fog: false,
     });
 
     // Walls: Fine seamless warm limestone plaster with authentic texture scale
@@ -801,7 +1130,7 @@ export default function ThreeMansionEngine() {
     const corridorCeilingMat = new THREE.MeshStandardMaterial({
       color: 0xfbf6ee,
       emissive: 0x2e2720,
-      emissiveIntensity: 0.20,
+      emissiveIntensity: sceneStateRef.current.introComplete ? 0.20 : 0.0,
       roughness: 0.60,
     });
 
@@ -810,7 +1139,6 @@ export default function ThreeMansionEngine() {
       color: 0xc9a961,
       roughness: 0.30,
       metalness: 0.65,
-      fog: false,
     });
 
     // Five-Star Hotel Lobby Coffered Ceiling Material (Warm Champagne Gold, Quilted Satin Sheen)
@@ -820,7 +1148,7 @@ export default function ThreeMansionEngine() {
       normalScale: new THREE.Vector2(0.40, 0.40),
       color: 0xd4af55, // Warm champagne / brushed antique gold
       emissive: 0x48341a, // Soft cove indirect glow
-      emissiveIntensity: 0.38,
+      emissiveIntensity: sceneStateRef.current.introComplete ? 0.38 : 0.0,
       roughness: 0.42, // Soft satin sheen
       metalness: 0.12, // Refined metallic balance for rich diffuse
     });
@@ -1158,7 +1486,6 @@ export default function ThreeMansionEngine() {
       color: 0x8a6e48, // rich luminous warm brushed antique bronze
       roughness: 0.24,
       metalness: 0.82,
-      fog: false,
     });
 
     const corporateCognacLeatherMat = new THREE.MeshStandardMaterial({
@@ -1228,39 +1555,69 @@ export default function ThreeMansionEngine() {
       fog: false,
     });
 
-    // --- 4. SCENE LIGHTING (BRIGHT, SUNLIT, WARM MANSION DAYLIGHT) ---
+    // --- 4. SCENE LIGHTING (SYMMETRICALLY BALANCED LUXURY DAYLIGHT) ---
     const hemiLight = new THREE.HemisphereLight(0xfffaee, 0xd8c8b2, 1.45);
     scene.add(hemiLight);
 
-    const mainSun = new THREE.DirectionalLight(0xfff7e8, 1.35);
-    mainSun.position.set(12, 22, 10);
+    // Symmetrical balanced sunlight (equal +X and -X angles for identical left/right wall illumination)
+    const mainSun = new THREE.DirectionalLight(
+      0xfff7e8,
+      sceneStateRef.current.introComplete ? 1.10 : 0.0
+    );
+    mainSun.position.set(8.0, 22.0, -40.0);
     scene.add(mainSun);
 
-    const fillSun = new THREE.DirectionalLight(0xf5ede2, 0.85);
-    fillSun.position.set(-10, 16, -40);
+    const fillSun = new THREE.DirectionalLight(
+      0xfff7e8,
+      sceneStateRef.current.introComplete ? 1.10 : 0.0
+    );
+    fillSun.position.set(-8.0, 22.0, -40.0);
     scene.add(fillSun);
 
-    // Upward architectural fill light illuminating the coffered ceiling tray with subtle directional gradient
-    const ceilingUpLight = new THREE.DirectionalLight(0xfff2da, 1.1);
-    ceilingUpLight.position.set(2.2, 1.2, -48.0);
-    ceilingUpLight.target.position.set(0, 7.0, -52.5);
+    // Upward architectural fill light illuminating the coffered ceiling tray perfectly on corridor centerline
+    const ceilingUpLight = new THREE.DirectionalLight(
+      0xfff2da,
+      sceneStateRef.current.introComplete ? 1.0 : 0.0
+    );
+    ceilingUpLight.position.set(0, 1.2, -75.0);
+    ceilingUpLight.target.position.set(0, 7.0, -80.0);
     scene.add(ceilingUpLight);
     scene.add(ceilingUpLight.target);
 
     // --- 5. ENCLOSED CENTRAL CORRIDOR GEOMETRY ---
     const hallWidth = 10;
     const hallHeight = 7.0;
-    const hallZStart = 15;
-    const hallZEnd = -120;
-    const hallLength = hallZStart - hallZEnd; // 135m
-    const hallZCenter = (hallZStart + hallZEnd) / 2; // -52.5
+    const hallZStart = 8.0;
+    const hallZEnd = -170;
+    const hallLength = hallZStart - hallZEnd; // 178m
+    const hallZCenter = (hallZStart + hallZEnd) / 2; // -81.0
+
+    // Master Hallway Group (Fully isolated from Door Scene until doors open)
+    const hallwayGroup = new THREE.Group();
+    hallwayGroup.visible = false; // Isolated by default
+
+    // Dynamic Travelling Wave Light for Progressive Hallway Reveal (Zero dynamic light cost during navigation)
+    const waveLight = new THREE.PointLight(0xffe2a4, 0, 36, 1.4);
+    waveLight.position.set(0, 5.5, 8.0);
+    hallwayGroup.add(waveLight);
+
+    interface BayLightingFixture {
+      cz: number;
+      lensMat: THREE.MeshStandardMaterial;
+      haloMat: THREE.MeshBasicMaterial;
+      coveMat: THREE.MeshStandardMaterial;
+    }
+    const bayLightingFixtures: BayLightingFixture[] = [];
+    const archLightingFixtures: { z: number; lensMat: THREE.MeshStandardMaterial }[] = [];
+    const sconceLightingFixtures: { z: number; shadeMat: THREE.MeshStandardMaterial; scallopMat: THREE.MeshBasicMaterial }[] = [];
+    const muralLightingFixtures: { z: number; lampMat: THREE.MeshStandardMaterial; canvasMat: THREE.MeshStandardMaterial }[] = [];
 
     // 1. High-Performance Pure Italian Black Marble Floor (Nero Marquina / Portoro)
     const floorGeo = new THREE.PlaneGeometry(hallWidth, hallLength);
     const floorMesh = new THREE.Mesh(floorGeo, corridorFloorMat);
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.position.set(0, 0, hallZCenter);
-    scene.add(floorMesh);
+    hallwayGroup.add(floorMesh);
 
     // 4. Grounding Contact Shadows along Baseboards
     const leftContactShadow = new THREE.Mesh(
@@ -1276,14 +1633,14 @@ export default function ThreeMansionEngine() {
     );
     rightContactShadow.rotation.x = -Math.PI / 2;
     rightContactShadow.position.set(hallWidth / 2 - 0.2, 0.004, hallZCenter);
-    scene.add(leftContactShadow, rightContactShadow);
+    hallwayGroup.add(leftContactShadow, rightContactShadow);
 
     // 5. Deep 3D Architectural Coffered Ceiling with Recessed Tray & Concealed Cove Lighting
     const ceilGeo = new THREE.PlaneGeometry(hallWidth, hallLength);
     const ceilMesh = new THREE.Mesh(ceilGeo, corridorCeilingMat);
     ceilMesh.rotation.x = Math.PI / 2;
     ceilMesh.position.set(0, hallHeight, hallZCenter);
-    scene.add(ceilMesh);
+    hallwayGroup.add(ceilMesh);
 
     // Deep longitudinal perimeter soffit beams creating recessed central tray
     const soffitWidth = 1.2;
@@ -1299,7 +1656,7 @@ export default function ThreeMansionEngine() {
       stoneTrimMat
     );
     rightSoffit.position.set(hallWidth / 2 - soffitWidth / 2, hallHeight - soffitDepth / 2, hallZCenter);
-    scene.add(leftSoffit, rightSoffit);
+    hallwayGroup.add(leftSoffit, rightSoffit);
 
     // Stepped gold reveal molding along inner edge of soffits
     const leftSoffitReveal = new THREE.Mesh(
@@ -1313,7 +1670,7 @@ export default function ThreeMansionEngine() {
       antiqueGoldMat
     );
     rightSoffitReveal.position.set(hallWidth / 2 - soffitWidth, hallHeight - soffitDepth, hallZCenter);
-    scene.add(leftSoffitReveal, rightSoffitReveal);
+    hallwayGroup.add(leftSoffitReveal, rightSoffitReveal);
 
     // --- 5-STAR HOTEL LUXURY COFFERED CEILING SYSTEM ---
     // The central ceiling tray (7.6m wide between soffits) is divided into 12m bays
@@ -1338,10 +1695,10 @@ export default function ThreeMansionEngine() {
         antiqueGoldMat
       );
       mainBeamGold.position.set(0, hallHeight - 0.325, cz);
-      scene.add(mainBeam, mainBeamGold);
+      hallwayGroup.add(mainBeam, mainBeamGold);
     }
 
-    // 2. Modular Coffered Cassettes in Each Bay (2 across X, 3 along Z)
+    // Modular Coffered Cassettes in Each Bay (2 across X, 3 along Z)
     const numCols = 2; // 2 cassettes across hallway width
     const numRows = 3; // 3 cassettes along length of each 12m bay
     const cassetteW = 3.05; // refined width per cassette
@@ -1371,6 +1728,18 @@ export default function ThreeMansionEngine() {
     const rowDividerGeo = new THREE.BoxGeometry(baySpanW, 0.22, 0.40);
     const rowDividerGoldGeo = new THREE.BoxGeometry(baySpanW, 0.015, 0.05);
 
+    // Downlight Fixture Shared Geometries (in the center of each coffered square)
+    // 1. Toroidal outer gold bezel framing the light
+    const downlightOuterTorusGeo = new THREE.TorusGeometry(0.30, 0.038, 12, 24);
+    // 2. Inner gold stepped trim ring
+    const downlightInnerTorusGeo = new THREE.TorusGeometry(0.20, 0.022, 12, 24);
+    // 3. Glowing convex crystal dome projecting downward into the hallway
+    const downlightLensDomeGeo = new THREE.SphereGeometry(0.18, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    // 4. Center sparkling gold rosette jewel
+    const downlightJewelGeo = new THREE.OctahedronGeometry(0.045, 0);
+    // 5. Radial warm ambient halo wash on ceiling around fixture
+    const downlightHaloGeo = new THREE.PlaneGeometry(2.0, 2.0);
+
     const stoneGeos: THREE.BufferGeometry[] = [];
     const goldGeos: THREE.BufferGeometry[] = [];
     const shadowGeos: THREE.BufferGeometry[] = [];
@@ -1386,7 +1755,10 @@ export default function ThreeMansionEngine() {
       ry = 0,
       rz = 0
     ) => {
-      const g = sourceGeo.clone();
+      let g = sourceGeo.clone();
+      if (g.index) {
+        g = g.toNonIndexed();
+      }
       if (rx !== 0 || ry !== 0 || rz !== 0) {
         g.rotateX(rx);
         g.rotateY(ry);
@@ -1396,7 +1768,7 @@ export default function ThreeMansionEngine() {
       targetList.push(g);
     };
 
-    for (let cz = hallZStart - 12; cz >= hallZEnd + 12; cz -= 12) {
+    for (let cz = hallZStart - 6; cz >= hallZEnd + 6; cz -= 12) {
       appendTransformedGeo(stoneGeos, spineBeamGeo, 0, hallHeight - 0.13, cz);
       appendTransformedGeo(goldGeos, spineGoldGeo, 0, hallHeight - 0.265, cz);
 
@@ -1404,6 +1776,9 @@ export default function ThreeMansionEngine() {
         appendTransformedGeo(stoneGeos, rowDividerGeo, 0, hallHeight - 0.11, cz + divZ);
         appendTransformedGeo(goldGeos, rowDividerGoldGeo, 0, hallHeight - 0.225, cz + divZ);
       }
+
+      const bayLensGeos: THREE.BufferGeometry[] = [];
+      const bayHaloGeos: THREE.BufferGeometry[] = [];
 
       for (let c = 0; c < numCols; c++) {
         const cx = colXPositions[c];
@@ -1430,7 +1805,81 @@ export default function ThreeMansionEngine() {
           appendTransformedGeo(shadowGeos, shadowTopBottomGeo, cx, hallHeight - 0.015, rz - (cassetteL - 0.02) / 2);
           appendTransformedGeo(shadowGeos, shadowLeftRightGeo, cx - (cassetteW - 0.02) / 2, hallHeight - 0.015, rz);
           appendTransformedGeo(shadowGeos, shadowLeftRightGeo, cx + (cassetteW - 0.02) / 2, hallHeight - 0.015, rz);
+
+          // 5. ARCHITECTURAL DOWNLIGHT IN THE CENTER OF EACH COFFERED SQUARE
+          // A. Soft luminous radial glow wash on ceiling around fixture
+          appendTransformedGeo(bayHaloGeos, downlightHaloGeo, cx, hallHeight - 0.012, rz, Math.PI / 2, 0, 0);
+
+          // B. Outer Antique Gold Stepped Flange Torus Ring
+          appendTransformedGeo(goldGeos, downlightOuterTorusGeo, cx, hallHeight - 0.022, rz, Math.PI / 2, 0, 0);
+          appendTransformedGeo(goldGeos, downlightInnerTorusGeo, cx, hallHeight - 0.028, rz, Math.PI / 2, 0, 0);
+
+          // C. Center Sparkling Rosette Jewel
+          appendTransformedGeo(goldGeos, downlightJewelGeo, cx, hallHeight - 0.09, rz);
+
+          // D. Radiant Warm Glowing Downlight Lens Dome (faces downwards into room)
+          appendTransformedGeo(bayLensGeos, downlightLensDomeGeo, cx, hallHeight - 0.015, rz, Math.PI, 0, 0);
         }
+      }
+
+      // Merge and instantiate this bay's downlights and cove lighting
+      if (bayLensGeos.length > 0) {
+        const mergedBayLenses = BufferGeometryUtils.mergeGeometries(bayLensGeos, false);
+        const mergedBayHalos = BufferGeometryUtils.mergeGeometries(bayHaloGeos, false);
+        bayLensGeos.forEach((g) => g.dispose());
+        bayHaloGeos.forEach((g) => g.dispose());
+
+        const bayLensMat = new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          emissive: 0xffe2a4,
+          emissiveIntensity: sceneStateRef.current.introComplete ? 3.4 : 0.0,
+          roughness: 0.08,
+          metalness: 0.02,
+          toneMapped: false,
+        });
+
+        const bayHaloMat = new THREE.MeshBasicMaterial({
+          map: floorSpillTex,
+          transparent: true,
+          opacity: sceneStateRef.current.introComplete ? 0.70 : 0.0,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+
+        const bayCoveMat = new THREE.MeshStandardMaterial({
+          color: 0xffe6c2,
+          emissive: 0xffc472,
+          emissiveIntensity: sceneStateRef.current.introComplete ? 1.5 : 0.0,
+          roughness: 0.25,
+          metalness: 0.0,
+          toneMapped: true,
+        });
+
+        const bayLeftCove = new THREE.Mesh(
+          new THREE.BoxGeometry(0.12, 0.06, 12),
+          bayCoveMat
+        );
+        bayLeftCove.position.set(-hallWidth / 2 + soffitWidth - 0.06, hallHeight - 0.06, cz);
+
+        const bayRightCove = new THREE.Mesh(
+          new THREE.BoxGeometry(0.12, 0.06, 12),
+          bayCoveMat
+        );
+        bayRightCove.position.set(hallWidth / 2 - soffitWidth + 0.06, hallHeight - 0.06, cz);
+
+        hallwayGroup.add(
+          new THREE.Mesh(mergedBayLenses, bayLensMat),
+          new THREE.Mesh(mergedBayHalos, bayHaloMat),
+          bayLeftCove,
+          bayRightCove
+        );
+
+        bayLightingFixtures.push({
+          cz,
+          lensMat: bayLensMat,
+          haloMat: bayHaloMat,
+          coveMat: bayCoveMat,
+        });
       }
     }
 
@@ -1445,7 +1894,7 @@ export default function ThreeMansionEngine() {
       shadowGeos.forEach((g) => g.dispose());
       panelGeos.forEach((g) => g.dispose());
 
-      scene.add(
+      hallwayGroup.add(
         new THREE.Mesh(mergedStone, stoneTrimMat),
         new THREE.Mesh(mergedGold, antiqueGoldMat),
         new THREE.Mesh(mergedShadow, cofferShadowMat),
@@ -1453,31 +1902,9 @@ export default function ThreeMansionEngine() {
       );
     }
 
-    // Recessed indirect LED cove light channels hidden inside the soffit pocket (high emissive for soft bloom)
-    const coveLightMat = new THREE.MeshStandardMaterial({
-      color: 0xffe6c2,
-      emissive: 0xffc472,
-      emissiveIntensity: 1.5,
-      roughness: 0.25,
-      metalness: 0.0,
-      toneMapped: true,
-    });
-    const leftCoveGlow = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.06, hallLength),
-      coveLightMat
-    );
-    leftCoveGlow.position.set(-hallWidth / 2 + soffitWidth - 0.06, hallHeight - 0.06, hallZCenter);
-
-    const rightCoveGlow = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.06, hallLength),
-      coveLightMat
-    );
-    rightCoveGlow.position.set(hallWidth / 2 - soffitWidth + 0.06, hallHeight - 0.06, hallZCenter);
-    scene.add(leftCoveGlow, rightCoveGlow);
-
-    // --- 4 TRANSVERSE ARCHES ACROSS THE CORRIDOR (CURATED ARCHITECTURAL SPACING) ---
-    const transverseArchZ = [-20, -45, -70, -95];
-    const archRomanNumerals = ["I", "II", "III", "IV"];
+    // --- 6 TRANSVERSE ARCHES ACROSS THE CORRIDOR (CURATED ARCHITECTURAL SPACING) ---
+    const transverseArchZ = [-20, -45, -70, -95, -120, -145];
+    const archRomanNumerals = ["I", "II", "III", "IV", "V", "VI"];
 
     transverseArchZ.forEach((az, i) => {
       const archGroup = new THREE.Group();
@@ -1518,14 +1945,24 @@ export default function ThreeMansionEngine() {
       keystone.position.set(0, hallHeight - 0.32, 0);
 
       // Architectural Emissive Downlight Fixture (zero dynamic light cost)
+      const archLensMat = new THREE.MeshStandardMaterial({
+        color: 0xffe6c2,
+        emissive: 0xffc472,
+        emissiveIntensity: sceneStateRef.current.introComplete ? 1.5 : 0.0,
+        roughness: 0.25,
+        metalness: 0.0,
+        toneMapped: true,
+      });
       const archLens = new THREE.Mesh(
         new THREE.CylinderGeometry(0.14, 0.14, 0.03, 16),
-        coveLightMat
+        archLensMat
       );
       archLens.position.set(0, hallHeight - 0.52, 0);
 
+      archLightingFixtures.push({ z: az, lensMat: archLensMat });
+
       archGroup.add(beam, reveal, leftPilaster, rightPilaster, keystone, archLens);
-      scene.add(archGroup);
+      hallwayGroup.add(archGroup);
     });
 
     // Corridor Start Wall at Z = +15
@@ -1535,9 +1972,101 @@ export default function ThreeMansionEngine() {
     );
     startWall.position.set(0, hallHeight / 2, hallZStart);
     startWall.rotation.y = Math.PI;
-    scene.add(startWall);
+    hallwayGroup.add(startWall);
 
     // --- GRAND ENTRANCE DOOR OPENING GATE & ENCLOSURE AT Z = 8.2 ---
+    const createLuxuryDoorWoodTexture = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1024;
+      canvas.height = 1024;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return new THREE.CanvasTexture(canvas);
+
+      // Deep rich dark walnut / ebony stained timber background
+      const baseGrad = ctx.createLinearGradient(0, 0, 1024, 0);
+      baseGrad.addColorStop(0, "#19120c");
+      baseGrad.addColorStop(0.25, "#261c14");
+      baseGrad.addColorStop(0.5, "#1e150f");
+      baseGrad.addColorStop(0.75, "#2a1e16");
+      baseGrad.addColorStop(1, "#18110b");
+      ctx.fillStyle = baseGrad;
+      ctx.fillRect(0, 0, 1024, 1024);
+
+      // Vertical organic wood grain flows with undulating fibers
+      for (let x = 0; x < 1024; x += 1.5) {
+        ctx.beginPath();
+        const baseAlpha = 0.05 + Math.random() * 0.12;
+        const isWarmStrand = Math.random() > 0.52;
+        ctx.strokeStyle = isWarmStrand
+          ? `rgba(78, 50, 32, ${baseAlpha})`
+          : `rgba(12, 8, 5, ${baseAlpha * 1.4})`;
+        ctx.lineWidth = 0.8 + Math.random() * 1.8;
+
+        let curX = x;
+        ctx.moveTo(curX, 0);
+        for (let y = 0; y < 1024; y += 32) {
+          curX += Math.sin((y + x * 2) * 0.015) * 1.3 + (Math.random() - 0.5) * 0.9;
+          ctx.lineTo(curX, y);
+        }
+        ctx.stroke();
+      }
+
+      // Rich burled grain pores and luxury satin lacquer sheen wash
+      for (let i = 0; i < 70; i++) {
+        const knotY = Math.random() * 1024;
+        const knotX = Math.random() * 1024;
+        const radX = 8 + Math.random() * 26;
+        const radY = 40 + Math.random() * 120;
+        const knotGrad = ctx.createRadialGradient(knotX, knotY, 2, knotX, knotY, radY);
+        knotGrad.addColorStop(0, "rgba(46, 28, 18, 0.32)");
+        knotGrad.addColorStop(0.6, "rgba(24, 15, 10, 0.14)");
+        knotGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = knotGrad;
+        ctx.beginPath();
+        ctx.ellipse(knotX, knotY, radX, radY, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Subtle fine micro-pores and satin luster speckles
+      ctx.fillStyle = "rgba(235, 190, 125, 0.018)";
+      for (let i = 0; i < 3500; i++) {
+        ctx.fillRect(Math.random() * 1024, Math.random() * 1024, 1, 1);
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    };
+
+    const createDoorWoodNormalTexture = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return new THREE.CanvasTexture(canvas);
+
+      // Default tangent flat normal: RGB(128, 128, 255)
+      ctx.fillStyle = "rgb(128, 128, 255)";
+      ctx.fillRect(0, 0, 512, 512);
+
+      // Fine vertical relief ripples
+      for (let x = 0; x < 512; x += 2) {
+        const delta = Math.floor((Math.random() - 0.5) * 32);
+        const r = 128 + delta;
+        const b = 255;
+        const g = 128 + Math.floor(delta * 0.4);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.24)`;
+        ctx.fillRect(x, 0, 1, 512);
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    };
+
     const createPlaqueTexture = () => {
       const canvas = document.createElement("canvas");
       canvas.width = 1024;
@@ -1667,21 +2196,21 @@ export default function ThreeMansionEngine() {
       );
       lintel.position.set(0, 5.25, 0);
 
-      // Gilded Arch Molding Trims (inner reveal framing doors)
+      // Thickened Substantial Gilded Arch Molding Trims (3-tier stepped gold profile framing doors)
       const leftGoldReveal = new THREE.Mesh(
-        new THREE.BoxGeometry(0.08, 4.7, 0.48),
+        new THREE.BoxGeometry(0.12, 4.7, 0.52),
         antiqueGoldMat
       );
-      leftGoldReveal.position.set(-1.82, 2.35, 0);
+      leftGoldReveal.position.set(-1.80, 2.35, 0);
 
       const rightGoldReveal = new THREE.Mesh(
-        new THREE.BoxGeometry(0.08, 4.7, 0.48),
+        new THREE.BoxGeometry(0.12, 4.7, 0.52),
         antiqueGoldMat
       );
-      rightGoldReveal.position.set(1.82, 2.35, 0);
+      rightGoldReveal.position.set(1.80, 2.35, 0);
 
       const topGoldReveal = new THREE.Mesh(
-        new THREE.BoxGeometry(3.6, 0.08, 0.48),
+        new THREE.BoxGeometry(3.72, 0.12, 0.52),
         antiqueGoldMat
       );
       topGoldReveal.position.set(0, 4.75, 0);
@@ -1693,7 +2222,7 @@ export default function ThreeMansionEngine() {
       );
       keystone.position.set(0, 5.80, 0.20);
 
-      // 2. GOPAL LAHOTI — HOUSE OF INTERIORS Architectural Bronze Plaque
+      // 2. GOPAL LAHOTI — HOUSE OF INTERIORS Architectural Bronze Plaque with Drop Shadow
       const plaqueTex = createPlaqueTexture();
       const plaqueMat = new THREE.MeshStandardMaterial({
         map: plaqueTex,
@@ -1713,112 +2242,423 @@ export default function ThreeMansionEngine() {
       );
       plaqueGoldFrame.position.set(0, 5.25, 0.27);
 
-      // 3. Flanking Vestibule Enclosure Walls (blocks any outside view until opened)
-      const leftWallInfill = new THREE.Mesh(
-        new THREE.BoxGeometry(2.5, hallHeight, 0.4),
+      const plaqueShadow = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.76, 0.88),
+        contactShadowMat
+      );
+      plaqueShadow.position.set(0, 5.24, 0.255);
+
+      // 3. Monumental 60m Palace Portico Facade & Exterior Architecture (100% full-span isolation across all viewports)
+      const facadeLeft = new THREE.Mesh(
+        new THREE.BoxGeometry(28.2, 18.0, 0.45),
         corridorWallMat
       );
-      leftWallInfill.position.set(-3.75, 3.5, 0);
+      facadeLeft.position.set(-15.9, 9.0, 0);
 
-      const rightWallInfill = new THREE.Mesh(
-        new THREE.BoxGeometry(2.5, hallHeight, 0.4),
+      const facadeRight = new THREE.Mesh(
+        new THREE.BoxGeometry(28.2, 18.0, 0.45),
         corridorWallMat
       );
-      rightWallInfill.position.set(3.75, 3.5, 0);
+      facadeRight.position.set(15.9, 9.0, 0);
 
-      const topWallInfill = new THREE.Mesh(
-        new THREE.BoxGeometry(hallWidth, 1.4, 0.4),
+      const facadeTop = new THREE.Mesh(
+        new THREE.BoxGeometry(3.6, 13.3, 0.45),
         corridorWallMat
       );
-      topWallInfill.position.set(0, 6.3, 0);
+      facadeTop.position.set(0, 11.35, 0);
 
-      // 4. Ornate Carved Double Doors (Dark Walnut Timber with Raised Boiserie & Brass)
+      // Classical Entablature & Cornice Banding across entire 60m facade
+      const facadeArchitrave = new THREE.Mesh(
+        new THREE.BoxGeometry(60.0, 0.35, 0.30),
+        stoneTrimMat
+      );
+      facadeArchitrave.position.set(0, 6.20, 0.20);
+
+      const facadeFriezeGold = new THREE.Mesh(
+        new THREE.BoxGeometry(60.0, 0.06, 0.34),
+        antiqueGoldMat
+      );
+      facadeFriezeGold.position.set(0, 6.40, 0.20);
+
+      const facadeCornice = new THREE.Mesh(
+        new THREE.BoxGeometry(60.0, 0.45, 0.42),
+        stoneTrimMat
+      );
+      facadeCornice.position.set(0, 6.65, 0.22);
+
+      const facadeTopCornice = new THREE.Mesh(
+        new THREE.BoxGeometry(60.0, 0.60, 0.50),
+        stoneTrimMat
+      );
+      facadeTopCornice.position.set(0, 17.7, 0.25);
+
+      // Classical Facade Baseboards
+      const facadeBaseLeft = new THREE.Mesh(
+        new THREE.BoxGeometry(28.2, 0.35, 0.12),
+        stoneTrimMat
+      );
+      facadeBaseLeft.position.set(-15.9, 0.175, 0.25);
+
+      const facadeBaseRight = new THREE.Mesh(
+        new THREE.BoxGeometry(28.2, 0.35, 0.12),
+        stoneTrimMat
+      );
+      facadeBaseRight.position.set(15.9, 0.175, 0.25);
+
+      const facadeBaseGoldLeft = new THREE.Mesh(
+        new THREE.BoxGeometry(28.2, 0.04, 0.14),
+        antiqueGoldMat
+      );
+      facadeBaseGoldLeft.position.set(-15.9, 0.37, 0.25);
+
+      const facadeBaseGoldRight = new THREE.Mesh(
+        new THREE.BoxGeometry(28.2, 0.04, 0.14),
+        antiqueGoldMat
+      );
+      facadeBaseGoldRight.position.set(15.9, 0.37, 0.25);
+
+      // Flanking Architectural Pilasters & Exterior Bronze Sconces
+      const pilasterGroup = new THREE.Group();
+      const pilasterXs = [-3.8, 3.8, -8.5, 8.5, -14.5, 14.5, -21.0, 21.0];
+      pilasterXs.forEach((px, pIdx) => {
+        const pShaft = new THREE.Mesh(
+          new THREE.BoxGeometry(0.70, 5.8, 0.18),
+          stoneTrimMat
+        );
+        pShaft.position.set(px, 2.9, 0.28);
+
+        const pBase = new THREE.Mesh(
+          new THREE.BoxGeometry(0.82, 0.30, 0.22),
+          antiqueGoldMat
+        );
+        pBase.position.set(px, 0.15, 0.30);
+
+        const pCap = new THREE.Mesh(
+          new THREE.BoxGeometry(0.85, 0.28, 0.24),
+          antiqueGoldMat
+        );
+        pCap.position.set(px, 5.95, 0.30);
+
+        pilasterGroup.add(pShaft, pBase, pCap);
+
+        // Exterior Bronze Wall Lanterns on primary flanking pilasters
+        if (Math.abs(px) === 3.8 || Math.abs(px) === 8.5) {
+          const lanternGroup = new THREE.Group();
+          lanternGroup.position.set(px, 3.6, 0.40);
+
+          const lPlate = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.55, 0.04), darkBronzeMat);
+          const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.22), darkBronzeMat);
+          lArm.position.set(0, 0, 0.11);
+
+          const lLantern = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.07, 0.05, 0.32, 8),
+            new THREE.MeshStandardMaterial({
+              color: 0xffedd0,
+              emissive: 0xffcb70,
+              emissiveIntensity: 1.8,
+              roughness: 0.2,
+            })
+          );
+          lLantern.position.set(0, 0, 0.22);
+
+          const lCap = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.10, 8), darkBronzeMat);
+          lCap.position.set(0, 0.21, 0.22);
+
+          const lScallop = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.4, 2.0),
+            new THREE.MeshBasicMaterial({
+              map: scallopGlowTex,
+              transparent: true,
+              opacity: 0.55,
+              blending: THREE.AdditiveBlending,
+              depthWrite: false,
+            })
+          );
+          lScallop.position.set(0, -0.9, 0.01);
+
+          lanternGroup.add(lPlate, lArm, lLantern, lCap, lScallop);
+          pilasterGroup.add(lanternGroup);
+        }
+      });
+
+      // Honed Portico Floor, Coffered Ceiling, and Side Return Walls
+      const porticoFloor = new THREE.Mesh(
+        new THREE.PlaneGeometry(60.0, 32.0),
+        corridorFloorMat
+      );
+      porticoFloor.rotation.x = -Math.PI / 2;
+      porticoFloor.position.set(0, -0.005, 16.0);
+
+      const porticoCeilingMat = new THREE.MeshStandardMaterial({
+        color: 0xfbf6ee,
+        roughness: 0.60,
+      });
+
+      const porticoCeiling = new THREE.Mesh(
+        new THREE.PlaneGeometry(60.0, 32.0),
+        porticoCeilingMat
+      );
+      porticoCeiling.rotation.x = Math.PI / 2;
+      porticoCeiling.position.set(0, 18.0, 16.0);
+
+      const porticoWallLeft = new THREE.Mesh(
+        new THREE.PlaneGeometry(32.0, 18.0),
+        corridorWallMat
+      );
+      porticoWallLeft.rotation.y = Math.PI / 2;
+      porticoWallLeft.position.set(-30.0, 9.0, 16.0);
+
+      const porticoWallRight = new THREE.Mesh(
+        new THREE.PlaneGeometry(32.0, 18.0),
+        corridorWallMat
+      );
+      porticoWallRight.rotation.y = -Math.PI / 2;
+      porticoWallRight.position.set(30.0, 9.0, 16.0);
+
+      // Portico Ambient Fill Key Light (illuminates portico & columns, bounded to exterior)
+      const porticoFill = new THREE.SpotLight(0xffecd4, 1.45, 26.0, Math.PI / 3.0, 0.45, 1.2);
+      porticoFill.position.set(0, 12.0, 18.0);
+      porticoFill.target.position.set(0, 3.0, 0);
+
+      // 4. Bespoke Luxury Dark Walnut Timber Materials & Carved Boiserie
+      const doorWoodTex = createLuxuryDoorWoodTexture();
+      const doorWoodNormTex = createDoorWoodNormalTexture();
+
       const doorWoodMat = new THREE.MeshStandardMaterial({
-        map: wengeTimberTex,
-        color: 0x36251c,
-        roughness: 0.36,
-        metalness: 0.08,
+        map: doorWoodTex,
+        normalMap: doorWoodNormTex,
+        normalScale: new THREE.Vector2(0.35, 0.35),
+        color: 0xffffff,
+        roughness: 0.24, // satin lacquer polished sheen
+        metalness: 0.10, // rich specular response
         fog: false,
       });
 
-      // Helper to build raised boiserie panels and gold fillets on a door leaf
-      const buildLeafPanels = (parent: THREE.Object3D, leafCenterX: number) => {
-        // Core door slab
+      const doorFieldPanelMat = new THREE.MeshStandardMaterial({
+        map: doorWoodTex,
+        normalMap: doorWoodNormTex,
+        normalScale: new THREE.Vector2(0.55, 0.55),
+        color: 0xf5ebe0,
+        roughness: 0.20,
+        metalness: 0.12,
+        fog: false,
+      });
+
+      const doorBrassHardwareMat = new THREE.MeshStandardMaterial({
+        color: 0xe8c488,
+        roughness: 0.20, // highly polished cast brass
+        metalness: 0.88, // strong metallic highlights
+        fog: false,
+      });
+
+      const doorRosetteMat = new THREE.MeshStandardMaterial({
+        color: 0xf5d398,
+        roughness: 0.18,
+        metalness: 0.92,
+        fog: false,
+      });
+
+      const doorShadowBedMat = new THREE.MeshStandardMaterial({
+        color: 0x0a0705,
+        roughness: 0.95,
+        metalness: 0.0,
+        fog: false,
+      });
+
+      // Helper to build raised boiserie panels, rosettes and gold fillets on a door leaf
+      const buildLeafPanels = (parent: THREE.Object3D, leafCenterX: number, isRightLeaf: boolean) => {
+        // 1. Structural Stile & Rail Outer Door Core Slab
         const slab = new THREE.Mesh(
-          new THREE.BoxGeometry(1.74, 4.65, 0.10),
+          new THREE.BoxGeometry(1.74, 4.65, 0.12),
           doorWoodMat
         );
         slab.position.set(leafCenterX, 2.325, 0);
         parent.add(slab);
 
-        // 3 Tiers of Raised Boiserie Panels on front face (+Z)
+        // 2. Heavy Architectural Cast Brass Butt Hinges (3 hinges per leaf mounted on outer edge)
+        const hingeX = isRightLeaf ? leafCenterX + 0.87 : leafCenterX - 0.87;
+        const hingeFacing = isRightLeaf ? 1 : -1;
+        const hingeYs = [0.90, 2.35, 3.90];
+
+        hingeYs.forEach((hy) => {
+          const hingeGroup = new THREE.Group();
+          hingeGroup.position.set(hingeX, hy, 0.05);
+
+          // Brass Hinge Leaf Plate
+          const leafPlate = new THREE.Mesh(
+            new THREE.BoxGeometry(0.06, 0.22, 0.015),
+            doorBrassHardwareMat
+          );
+          leafPlate.position.set(-hingeFacing * 0.025, 0, 0);
+
+          // Cylindrical Hinge Barrel / Knuckle
+          const barrel = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.022, 0.022, 0.24, 16),
+            doorBrassHardwareMat
+          );
+          barrel.position.set(0, 0, 0.01);
+
+          // Top & Bottom Acorn Finials
+          const acornTop = new THREE.Mesh(
+            new THREE.SphereGeometry(0.022, 12, 12),
+            doorBrassHardwareMat
+          );
+          acornTop.position.set(0, 0.13, 0.01);
+          const acornBottom = new THREE.Mesh(
+            new THREE.SphereGeometry(0.022, 12, 12),
+            doorBrassHardwareMat
+          );
+          acornBottom.position.set(0, -0.13, 0.01);
+
+          hingeGroup.add(leafPlate, barrel, acornTop, acornBottom);
+          parent.add(hingeGroup);
+        });
+
+        // 3. 4 Tiers of Real 3D Raised & Recessed Joinery Panels on Front Face (+Z)
         const panelConfigs = [
-          { y: 0.70, h: 0.90 }, // Lower kick panel
-          { y: 2.45, h: 2.10 }, // Middle grand field panel
-          { y: 4.15, h: 0.90 }, // Upper header panel
+          { y: 0.55, h: 0.68 },  // Tier 1: Heavy lower kick panel
+          { y: 1.62, h: 1.12 },  // Tier 2: Lower grand field panel
+          { y: 2.98, h: 1.12 },  // Tier 3: Upper grand field panel
+          { y: 4.10, h: 0.62 },  // Tier 4: Classical upper header panel
         ];
 
         panelConfigs.forEach((cfg) => {
-          // Raised timber panel
-          const pMesh = new THREE.Mesh(
-            new THREE.BoxGeometry(1.36, cfg.h, 0.04),
-            doorWoodMat
-          );
-          pMesh.position.set(leafCenterX, cfg.y, 0.06);
+          const pW = 1.34;
+          const pH = cfg.h;
 
-          // Antique gold perimeter bevel frame
-          const goldTrim = new THREE.Mesh(
-            new THREE.BoxGeometry(1.40, cfg.h + 0.04, 0.015),
-            antiqueGoldMat
+          // Layer A: Recessed Dark Shadow Bed (creates deep carved reveal pocket)
+          const shadowBed = new THREE.Mesh(
+            new THREE.BoxGeometry(pW + 0.06, pH + 0.06, 0.02),
+            doorShadowBedMat
           );
-          goldTrim.position.set(leafCenterX, cfg.y, 0.05);
+          shadowBed.position.set(leafCenterX, cfg.y, 0.062);
 
-          parent.add(goldTrim, pMesh);
+          // Layer B: Substantial Outer Antique Gold Stepped Bevel Frame (width 0.045m, depth 0.035m)
+          const outerFrameTop = new THREE.Mesh(new THREE.BoxGeometry(pW + 0.06, 0.045, 0.035), antiqueGoldMat);
+          outerFrameTop.position.set(leafCenterX, cfg.y + pH / 2, 0.075);
+          const outerFrameBottom = new THREE.Mesh(new THREE.BoxGeometry(pW + 0.06, 0.045, 0.035), antiqueGoldMat);
+          outerFrameBottom.position.set(leafCenterX, cfg.y - pH / 2, 0.075);
+          const outerFrameLeft = new THREE.Mesh(new THREE.BoxGeometry(0.045, pH - 0.04, 0.035), antiqueGoldMat);
+          outerFrameLeft.position.set(leafCenterX - pW / 2, cfg.y, 0.075);
+          const outerFrameRight = new THREE.Mesh(new THREE.BoxGeometry(0.045, pH - 0.04, 0.035), antiqueGoldMat);
+          outerFrameRight.position.set(leafCenterX + pW / 2, cfg.y, 0.075);
+
+          // Layer C: Raised Solid Timber Field Panel (beveled center with prominent tactile relief)
+          const raisedField = new THREE.Mesh(
+            new THREE.BoxGeometry(pW - 0.06, pH - 0.06, 0.035),
+            doorFieldPanelMat
+          );
+          raisedField.position.set(leafCenterX, cfg.y, 0.082);
+
+          // Layer D: Inner Gilded Fillet Bead
+          const innerFilletTop = new THREE.Mesh(new THREE.BoxGeometry(pW - 0.12, 0.022, 0.02), antiqueGoldMat);
+          innerFilletTop.position.set(leafCenterX, cfg.y + (pH - 0.16) / 2, 0.098);
+          const innerFilletBottom = new THREE.Mesh(new THREE.BoxGeometry(pW - 0.12, 0.022, 0.02), antiqueGoldMat);
+          innerFilletBottom.position.set(leafCenterX, cfg.y - (pH - 0.16) / 2, 0.098);
+          const innerFilletLeft = new THREE.Mesh(new THREE.BoxGeometry(0.022, pH - 0.18, 0.02), antiqueGoldMat);
+          innerFilletLeft.position.set(leafCenterX - (pW - 0.16) / 2, cfg.y, 0.098);
+          const innerFilletRight = new THREE.Mesh(new THREE.BoxGeometry(0.022, pH - 0.18, 0.02), antiqueGoldMat);
+          innerFilletRight.position.set(leafCenterX + (pW - 0.16) / 2, cfg.y, 0.098);
+
+          // Layer E: 4 Cast Antique Brass Corner Rosettes / Medallions
+          const rosetGeo = new THREE.CylinderGeometry(0.028, 0.032, 0.015, 16);
+          rosetGeo.rotateX(Math.PI / 2);
+          const rosetOffsets = [
+            [- (pW - 0.16) / 2, (pH - 0.16) / 2],
+            [(pW - 0.16) / 2, (pH - 0.16) / 2],
+            [- (pW - 0.16) / 2, - (pH - 0.16) / 2],
+            [(pW - 0.16) / 2, - (pH - 0.16) / 2],
+          ];
+          rosetOffsets.forEach(([rx, ry]) => {
+            const roset = new THREE.Mesh(rosetGeo, doorRosetteMat);
+            roset.position.set(leafCenterX + rx, cfg.y + ry, 0.105);
+            parent.add(roset);
+          });
+
+          parent.add(
+            shadowBed,
+            outerFrameTop, outerFrameBottom, outerFrameLeft, outerFrameRight,
+            raisedField,
+            innerFilletTop, innerFilletBottom, innerFilletLeft, innerFilletRight
+          );
         });
       };
 
-      // Helper to build vertical sculpted brass pull handle
+      // Helper to build vertical sculpted heavy brass pull handle
       const buildHandle = (parent: THREE.Object3D, posX: number) => {
         const handleGroup = new THREE.Group();
-        handleGroup.position.set(posX, 2.15, 0.06);
+        handleGroup.position.set(posX, 2.30, 0.07);
 
-        // Escutcheon backplate
+        // 1. Heavy Cast Brass Escutcheon Backplate (1.10m tall with beveled profile)
         const escutcheon = new THREE.Mesh(
-          new THREE.BoxGeometry(0.12, 0.85, 0.025),
+          new THREE.BoxGeometry(0.15, 1.10, 0.03),
+          doorBrassHardwareMat
+        );
+        escutcheon.position.set(0, 0, 0.015);
+
+        // Stepped backplate gold trim
+        const escutcheonTrim = new THREE.Mesh(
+          new THREE.BoxGeometry(0.165, 1.115, 0.015),
           antiqueGoldMat
         );
-        escutcheon.position.set(0, 0, 0);
+        escutcheonTrim.position.set(0, 0, 0.007);
 
-        // Cylindrical vertical pull bar
-        const pullBar = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.025, 0.025, 0.60, 16),
-          antiqueGoldMat
-        );
-        pullBar.position.set(0, 0, 0.05);
-
-        // Stand-off mounting posts
+        // 2. Sculptural Top & Bottom Mounting Posts
         const postTop = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.018, 0.018, 0.05, 12),
-          antiqueGoldMat
+          new THREE.CylinderGeometry(0.026, 0.034, 0.07, 16),
+          doorBrassHardwareMat
         );
         postTop.rotation.x = Math.PI / 2;
-        postTop.position.set(0, 0.24, 0.025);
+        postTop.position.set(0, 0.38, 0.055);
 
         const postBottom = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.018, 0.018, 0.05, 12),
-          antiqueGoldMat
+          new THREE.CylinderGeometry(0.026, 0.034, 0.07, 16),
+          doorBrassHardwareMat
         );
         postBottom.rotation.x = Math.PI / 2;
-        postBottom.position.set(0, -0.24, 0.025);
+        postBottom.position.set(0, -0.38, 0.055);
 
-        // Classical Lion Knocker Ring
-        const knockerRing = new THREE.Mesh(
-          new THREE.TorusGeometry(0.065, 0.015, 12, 24),
-          antiqueGoldMat
+        // 3. Fluted Cylindrical Pull Bar
+        const pullBar = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.032, 0.032, 0.92, 24),
+          doorBrassHardwareMat
         );
-        knockerRing.position.set(0, 0.22, 0.045);
+        pullBar.position.set(0, 0, 0.09);
 
-        handleGroup.add(escutcheon, pullBar, postTop, postBottom, knockerRing);
+        // Top & Bottom Turned Acorn Finials
+        const finialTop = new THREE.Mesh(
+          new THREE.ConeGeometry(0.032, 0.08, 16),
+          doorBrassHardwareMat
+        );
+        finialTop.position.set(0, 0.50, 0.09);
+
+        const finialBottom = new THREE.Mesh(
+          new THREE.ConeGeometry(0.032, 0.08, 16),
+          doorBrassHardwareMat
+        );
+        finialBottom.rotation.x = Math.PI;
+        finialBottom.position.set(0, -0.50, 0.09);
+
+        // 4. Classical Sculpted Lion Head / Gilded Knocker Ring Medallion
+        const knockerPlate = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.055, 0.055, 0.025, 24),
+          doorBrassHardwareMat
+        );
+        knockerPlate.rotation.x = Math.PI / 2;
+        knockerPlate.position.set(0, 0.12, 0.035);
+
+        const knockerRing = new THREE.Mesh(
+          new THREE.TorusGeometry(0.075, 0.016, 16, 32),
+          doorBrassHardwareMat
+        );
+        knockerRing.position.set(0, 0.07, 0.06);
+
+        handleGroup.add(
+          escutcheonTrim, escutcheon,
+          postTop, postBottom,
+          pullBar, finialTop, finialBottom,
+          knockerPlate, knockerRing
+        );
         parent.add(handleGroup);
         return handleGroup;
       };
@@ -1826,49 +2666,65 @@ export default function ThreeMansionEngine() {
       // Left Door Pivot (hinge at X = -1.78)
       const leftPivot = new THREE.Group();
       leftPivot.position.set(-1.78, 0, 0);
-      buildLeafPanels(leftPivot, 0.87);
-      const leftHandle = buildHandle(leftPivot, 1.56);
+      buildLeafPanels(leftPivot, 0.87, false);
+      const leftHandle = buildHandle(leftPivot, 1.54);
 
       // Right Door Pivot (hinge at X = +1.78)
       const rightPivot = new THREE.Group();
       rightPivot.position.set(1.78, 0, 0);
-      buildLeafPanels(rightPivot, -0.87);
-      const rightHandle = buildHandle(rightPivot, -1.56);
+      buildLeafPanels(rightPivot, -0.87, true);
+      const rightHandle = buildHandle(rightPivot, -1.54);
 
       // Central Gold Astragal Lip (overlap bead along inner edge of right leaf)
       const astragal = new THREE.Mesh(
-        new THREE.BoxGeometry(0.05, 4.65, 0.035),
+        new THREE.BoxGeometry(0.06, 4.65, 0.045),
         antiqueGoldMat
       );
-      astragal.position.set(-0.025, 2.325, 0.06);
+      astragal.position.set(-0.025, 2.325, 0.07);
       rightPivot.add(astragal);
 
       // 5. Ambient Light Slit & Floor Spill (pulsing warm glow hinting at grandeur inside)
+      // Core bright light slit
       const crackMat = new THREE.MeshBasicMaterial({
-        color: 0xffdf8e,
+        color: 0xfff4d2,
         transparent: true,
-        opacity: 0.85,
+        opacity: 0.95,
         blending: THREE.AdditiveBlending,
       });
       const crackSlit = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.025, 4.65),
+        new THREE.PlaneGeometry(0.03, 4.65),
         crackMat
       );
-      crackSlit.position.set(0, 2.325, 0.08);
+      crackSlit.position.set(0, 2.325, 0.12);
 
+      // Soft ambient bloom halo bleed along the seam
+      const crackGlowMat = new THREE.MeshBasicMaterial({
+        color: 0xffb040,
+        transparent: true,
+        opacity: 0.55,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const crackGlow = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.24, 4.65),
+        crackGlowMat
+      );
+      crackGlow.position.set(0, 2.325, 0.11);
+
+      // Floor spill fanning outward
       const floorCrackMat = new THREE.MeshBasicMaterial({
         map: floorSpillTex,
         transparent: true,
-        opacity: 0.45,
+        opacity: 0.65,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
       });
       const floorSpill = new THREE.Mesh(
-        new THREE.PlaneGeometry(2.8, 1.8),
+        new THREE.PlaneGeometry(3.6, 2.4),
         floorCrackMat
       );
       floorSpill.rotation.x = -Math.PI / 2;
-      floorSpill.position.set(0, 0.006, 0.9);
+      floorSpill.position.set(0, 0.006, 1.2);
 
       // 6. Volumetric Golden Light Flood Quad (bursts into full radiance on opening)
       const floodMat = new THREE.MeshBasicMaterial({
@@ -1904,6 +2760,18 @@ export default function ThreeMansionEngine() {
       );
       thresholdPlate.position.set(0, 0.008, 0);
 
+      // 9. DEDICATED ARCHITECTURAL DOOR LIGHTING SYSTEM
+      // A. Directional Golden Key Spotlight (angled high-right to rake across panels, bevels and brass, bounded to exterior)
+      const doorKeyLight = new THREE.SpotLight(0xffeed2, 3.2, 9.0, Math.PI / 3.0, 0.45, 1.2);
+      doorKeyLight.position.set(3.5, 5.2, 5.2);
+      doorKeyLight.target.position.set(0, 2.4, 0);
+      doorGroup.add(doorKeyLight, doorKeyLight.target);
+
+      // B. Warm Golden Ground Grazing Uplight from Threshold
+      const doorUplight = new THREE.PointLight(0xffb84d, 1.8, 6.5, 1.2);
+      doorUplight.position.set(0, 0.12, 1.2);
+      doorGroup.add(doorUplight);
+
       // Assembly
       doorGroup.add(
         leftJamb,
@@ -1917,13 +2785,30 @@ export default function ThreeMansionEngine() {
         rightGoldReveal,
         topGoldReveal,
         keystone,
+        plaqueShadow,
         plaqueMesh,
         plaqueGoldFrame,
-        leftWallInfill,
-        rightWallInfill,
-        topWallInfill,
+        facadeLeft,
+        facadeRight,
+        facadeTop,
+        facadeArchitrave,
+        facadeFriezeGold,
+        facadeCornice,
+        facadeTopCornice,
+        facadeBaseLeft,
+        facadeBaseRight,
+        facadeBaseGoldLeft,
+        facadeBaseGoldRight,
+        pilasterGroup,
+        porticoFloor,
+        porticoCeiling,
+        porticoWallLeft,
+        porticoWallRight,
+        porticoFill,
+        porticoFill.target,
         leftPivot,
         rightPivot,
+        crackGlow,
         crackSlit,
         floorSpill,
         doorBacker,
@@ -1939,9 +2824,13 @@ export default function ThreeMansionEngine() {
         leftHandle,
         rightHandle,
         crackSlit,
+        crackGlow,
         floorSpill,
         doorBacker,
         lightFlood,
+        doorKeyLight,
+        doorUplight,
+        porticoFill,
       };
     };
 
@@ -1952,21 +2841,25 @@ export default function ThreeMansionEngine() {
     doorAnimationRef.current.leftHandle = entranceDoor.leftHandle;
     doorAnimationRef.current.rightHandle = entranceDoor.rightHandle;
     doorAnimationRef.current.crackSlit = entranceDoor.crackSlit;
+    doorAnimationRef.current.crackGlow = entranceDoor.crackGlow;
     doorAnimationRef.current.floorSpill = entranceDoor.floorSpill;
     doorAnimationRef.current.doorBacker = entranceDoor.doorBacker;
     doorAnimationRef.current.lightFlood = entranceDoor.lightFlood;
+    doorAnimationRef.current.doorKeyLight = entranceDoor.doorKeyLight;
+    doorAnimationRef.current.doorUplight = entranceDoor.doorUplight;
+    doorAnimationRef.current.porticoFill = entranceDoor.porticoFill;
 
-    // Corridor End Wall at Z = -120 with Recessed Architectural Niche
+    // Corridor End Wall at Z = hallZEnd with Recessed Architectural Niche
     const endWall = new THREE.Mesh(
       new THREE.PlaneGeometry(hallWidth, hallHeight),
       corridorWallMat
     );
     endWall.position.set(0, hallHeight / 2, hallZEnd);
-    scene.add(endWall);
+    hallwayGroup.add(endWall);
 
     // --- FAR-END GRAND ARCHITECTURAL FOCAL POINT (TERMINUS OF THE MANSION) ---
     const focalGroup = new THREE.Group();
-    focalGroup.position.set(0, 0, -118.5);
+    focalGroup.position.set(0, 0, hallZEnd + 1.5);
 
     // 1. Soaring Palladian Archway Outer Portal Frame (Open aperture with stone jambs & header)
     const archLeftPost = new THREE.Mesh(
@@ -2035,10 +2928,9 @@ export default function ThreeMansionEngine() {
     const backlitWindowMat = new THREE.MeshStandardMaterial({
       color: 0xfff0d6,
       emissive: 0xffbe58,
-      emissiveIntensity: 2.2, // warm glowing backlit alabaster
+      emissiveIntensity: sceneStateRef.current.introComplete ? 2.2 : 0.0,
       roughness: 0.15,
       metalness: 0.05,
-      fog: false,
     });
     const backlitWindow = new THREE.Mesh(
       new THREE.PlaneGeometry(4.7, 6.0),
@@ -2151,7 +3043,7 @@ export default function ThreeMansionEngine() {
     const torchereGlowMat = new THREE.MeshStandardMaterial({
       color: 0xffecc4,
       emissive: 0xffcb6e,
-      emissiveIntensity: 2.2,
+      emissiveIntensity: sceneStateRef.current.introComplete ? 2.2 : 0.0,
       roughness: 0.15,
       metalness: 0.05,
     });
@@ -2183,19 +3075,26 @@ export default function ThreeMansionEngine() {
     );
 
     // 6. SINGLE HERO DYNAMIC SPOTLIGHT (Light Spill through Archway across marble floor)
-    const focalLightSpill = new THREE.SpotLight(0xffe2a4, 4.2, 52, Math.PI / 3.4, 0.65, 1.2);
-    focalLightSpill.position.set(0, 5.8, -118.5);
+    const focalLightSpill = new THREE.SpotLight(
+      0xffe2a4,
+      sceneStateRef.current.introComplete ? 4.2 : 0.0,
+      52,
+      Math.PI / 3.4,
+      0.65,
+      1.2
+    );
+    focalLightSpill.position.set(0, 5.8, hallZEnd + 1.5);
     const focalTarget = new THREE.Object3D();
-    focalTarget.position.set(0, 0, -88); // points forward toward Chamber IV
-    scene.add(focalTarget);
+    focalTarget.position.set(0, 0, hallZEnd + 32); // points forward toward Chamber VI
+    hallwayGroup.add(focalTarget);
     focalLightSpill.target = focalTarget;
-    scene.add(focalLightSpill);
+    hallwayGroup.add(focalLightSpill);
 
     // 7. Ground Light Spill Plane (Additive radial glow carpet leading out from portal)
     const floorSpillMat = new THREE.MeshBasicMaterial({
       map: floorSpillTex,
       transparent: true,
-      opacity: 0.42,
+      opacity: sceneStateRef.current.introComplete ? 0.42 : 0.0,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
@@ -2204,8 +3103,8 @@ export default function ThreeMansionEngine() {
       floorSpillMat
     );
     floorSpillMesh.rotation.x = -Math.PI / 2;
-    floorSpillMesh.position.set(0, 0.009, -104);
-    scene.add(floorSpillMesh);
+    floorSpillMesh.position.set(0, 0.009, hallZEnd + 16);
+    hallwayGroup.add(floorSpillMesh);
 
     focalGroup.add(
       archLeftPost,
@@ -2225,7 +3124,7 @@ export default function ThreeMansionEngine() {
       traceryGroup,
       consoleGroup
     );
-    scene.add(focalGroup);
+    hallwayGroup.add(focalGroup);
 
     // --- 3D LUXURY WALL SCONCE GENERATOR (BAKED SCALLOP GLOW FOR ZERO DYNAMIC LIGHT OVERHEAD) ---
     const sconceDownScallopGeo = new THREE.PlaneGeometry(1.6, 2.4);
@@ -2294,7 +3193,7 @@ export default function ThreeMansionEngine() {
       const shadeMat = new THREE.MeshStandardMaterial({
         color: 0xfffaea,
         emissive: 0xffe1aa,
-        emissiveIntensity: 1.8,
+        emissiveIntensity: sceneStateRef.current.introComplete ? 1.8 : 0.0,
         roughness: 0.14,
         metalness: 0.04,
         transparent: true,
@@ -2307,30 +3206,44 @@ export default function ThreeMansionEngine() {
       shade.position.set(facingDir * 0.28, 0, 0);
 
       // 5. Baked Soft Wall Scallop Glow Wash (Downward & Upward pools with Additive Blending)
-      const downScallop = new THREE.Mesh(sconceDownScallopGeo, sconceScallopMat);
+      const scallopMat = sconceScallopMat.clone();
+      scallopMat.opacity = sceneStateRef.current.introComplete ? 0.70 : 0.0;
+
+      const downScallop = new THREE.Mesh(sconceDownScallopGeo, scallopMat);
       downScallop.rotation.y = facingDir * (Math.PI / 2);
       downScallop.position.set(facingDir * 0.008, -1.25, 0);
 
-      const upScallop = new THREE.Mesh(sconceUpScallopGeo, sconceScallopMat);
+      const upScallop = new THREE.Mesh(sconceUpScallopGeo, scallopMat);
       upScallop.rotation.y = facingDir * (Math.PI / 2);
       upScallop.rotation.z = Math.PI;
       upScallop.position.set(facingDir * 0.008, 1.05, 0);
 
+      sconceLightingFixtures.push({ z, shadeMat, scallopMat });
+
       sconceGroup.add(backplate, aoShadow, arm, topCap, bottomCap, finial, shade, downScallop, upScallop);
-      scene.add(sconceGroup);
+      hallwayGroup.add(sconceGroup);
     };
 
-    // Instantiate Curated Luxury 3D Sconces at Doorway Piers & Architectural Junctions
-    createLuxurySconce(-hallWidth / 2, 3.8, 12.0, 1);
-    createLuxurySconce(hallWidth / 2, 3.8, 12.0, -1);
+    // Instantiate Curated Luxury 3D Sconces at Architectural Piers & Non-Overlapping Bay Gaps
+    createLuxurySconce(-hallWidth / 2, 3.8, -0.2, 1);
+    createLuxurySconce(hallWidth / 2, 3.8, -0.2, -1);
+    createLuxurySconce(-hallWidth / 2, 3.8, -8.2, 1);
+    createLuxurySconce(hallWidth / 2, 3.8, -8.2, -1);
     createLuxurySconce(-hallWidth / 2, 3.8, -16.5, 1);
     createLuxurySconce(-hallWidth / 2, 3.8, -23.5, 1);
     createLuxurySconce(hallWidth / 2, 3.8, -41.5, -1);
     createLuxurySconce(hallWidth / 2, 3.8, -48.5, -1);
     createLuxurySconce(-hallWidth / 2, 3.8, -66.5, 1);
-    createLuxurySconce(-hallWidth / 2, 3.8, -73.5, 1);
+    createLuxurySconce(-hallWidth / 2, 3.8, -91.5, 1);
+    createLuxurySconce(-hallWidth / 2, 3.8, -98.5, 1);
     createLuxurySconce(hallWidth / 2, 3.8, -91.5, -1);
     createLuxurySconce(hallWidth / 2, 3.8, -98.5, -1);
+    createLuxurySconce(-hallWidth / 2, 3.8, -116.5, 1);
+    createLuxurySconce(-hallWidth / 2, 3.8, -123.5, 1);
+    createLuxurySconce(hallWidth / 2, 3.8, -141.5, -1);
+    createLuxurySconce(hallWidth / 2, 3.8, -148.5, -1);
+    createLuxurySconce(-hallWidth / 2, 3.8, -162.0, 1);
+    createLuxurySconce(hallWidth / 2, 3.8, -162.0, -1);
 
     // --- 3D MONUMENTAL 2-BLOCK WIDE EXHIBITION MURALS & TRIPLE PICTURE LIGHTS ---
     const museumGlassMat = new THREE.MeshStandardMaterial({
@@ -2375,7 +3288,7 @@ export default function ThreeMansionEngine() {
     const artLampHoodMat = new THREE.MeshStandardMaterial({
       color: 0xd4af37,
       emissive: 0xffdf96,
-      emissiveIntensity: 0.75,
+      emissiveIntensity: sceneStateRef.current.introComplete ? 0.75 : 0.0,
       roughness: 0.28,
       metalness: 0.55,
     });
@@ -2439,7 +3352,7 @@ export default function ThreeMansionEngine() {
         map: tex,
         emissiveMap: tex,
         emissive: 0xffffff,
-        emissiveIntensity: 0.38, // Museum picture-light illumination for 100% crystal clarity
+        emissiveIntensity: sceneStateRef.current.introComplete ? 0.38 : 0.0,
         roughness: 0.35,
         metalness: 0.02,
         side: THREE.FrontSide,
@@ -2455,6 +3368,9 @@ export default function ThreeMansionEngine() {
       glassPane.position.set(facingDir * 0.082, 0, 0);
 
       // 7. Triple Overhead Brass Gallery Picture Light Fixtures across the 6.8m span
+      const lampMat = artLampHoodMat.clone();
+      lampMat.emissiveIntensity = sceneStateRef.current.introComplete ? 0.75 : 0.0;
+
       const lightY = muralOuterHeight / 2 + 0.30;
       for (const offsetZ of [-2.1, 0, 2.1]) {
         const arm1 = new THREE.Mesh(sharedMuralArmGeo, antiqueGoldMat);
@@ -2465,12 +3381,14 @@ export default function ThreeMansionEngine() {
         arm2.rotation.z = facingDir * (Math.PI / 2);
         arm2.position.set(facingDir * 0.22, lightY, offsetZ + 0.45);
 
-        const lampHood = new THREE.Mesh(sharedMuralHoodGeo, artLampHoodMat);
+        const lampHood = new THREE.Mesh(sharedMuralHoodGeo, lampMat);
         lampHood.rotation.x = Math.PI / 2;
         lampHood.position.set(facingDir * 0.44, lightY, offsetZ);
 
         artGroup.add(arm1, arm2, lampHood);
       }
+
+      muralLightingFixtures.push({ z, lampMat, canvasMat });
 
       artGroup.add(
         dropShadow,
@@ -2479,54 +3397,72 @@ export default function ThreeMansionEngine() {
         innerFilletTop, innerFilletBottom, innerFilletLeft, innerFilletRight,
         matMesh, canvasMesh, glassPane
       );
-      scene.add(artGroup);
+      hallwayGroup.add(artGroup);
     };
 
     // Place 2-Block Wide 4K Monumental Exhibition Murals along both walls (Full-Wall Height, Center Y = 2.92)
-    // LEFT WALL (facingDir = 1, X = -hallWidth/2) - 2 Blocks Per Image
-    // Section 1: Entry to Chamber 1 (Z = +10 to -16)
-    createMonumental2BlockMural(-hallWidth / 2, 2.92, 8.5, 1, muralTex1);   // Double-Height Living Suite (Bays 1-2)
-    createMonumental2BlockMural(-hallWidth / 2, 2.92, 1.0, 1, muralTex2);   // Royal Velvet Dining Hall (Bays 3-4)
-    createMonumental2BlockMural(-hallWidth / 2, 2.92, -6.5, 1, muralTex3);  // Master Bedroom Recliner Suite (Bays 5-6)
-    // [Portal I at Z = -20: Chamber 1 Entry - leaves 3.6m clean clearance]
-    // Section 2: Between Chamber 1 and Chamber 3 (Z = -26 to -64)
-    createMonumental2BlockMural(-hallWidth / 2, 2.92, -27.5, 1, muralTex4); // Master Bedroom Vanity
-    createMonumental2BlockMural(-hallWidth / 2, 2.92, -35.0, 1, muralTex5); // Parents Classical Bedroom
-    createMonumental2BlockMural(-hallWidth / 2, 2.92, -42.5, 1, muralTex6); // Parents Velvet Lounge
-    createMonumental2BlockMural(-hallWidth / 2, 2.92, -50.0, 1, muralTex7); // Coral Velvet Pooja Mandir
-    createMonumental2BlockMural(-hallWidth / 2, 2.92, -57.5, 1, muralTex8); // Sacred Mandir Jali Suite
+    // LEFT WALL (facingDir = 1, X = -hallWidth/2) - Curated Non-Overlapping Intervals
+    // Section 1: Entry to Chamber 1 (Z = +8.0 to -17.0) - 3 Murals with 0.94m architectural gaps
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, 3.8, 1, muralTex1);   // Double-Height Living Suite (Bays 1-2)
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -4.2, 1, muralTex2);  // Royal Velvet Dining Hall (Bays 3-4)
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -12.2, 1, muralTex3); // Master Bedroom Recliner Suite (Bays 5-6)
+    // [Portal I at Z = -20: Chamber 1 Entry - 6m portal with gold jambs]
+    // Section 2: Between Chamber 1 and Chamber 3 (Z = -23.0 to -67.0) - 6 Continuous Murals
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -26.8, 1, muralTex4); // Grand Living & Chandelier Gallery
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -34.0, 1, muralTex5); // Penthouse Terrace Pavilion
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -41.2, 1, muralTex6); // Calacatta Marble Reception
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -48.4, 1, muralTex7); // Monolithic Stone Bar & Parlour
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -55.6, 1, muralTex8); // Designer Master Bedroom
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -62.8, 1, muralTex9); // Bespoke Italian Kitchen
     // [Portal III at Z = -70: Chamber 3 Entry]
-    // Section 3: After Chamber 3 (Z = -76 to -115)
-    createMonumental2BlockMural(-hallWidth / 2, 2.92, -77.5, 1, muralTex9);  // Luxury Guest Suite
-    createMonumental2BlockMural(-hallWidth / 2, 2.92, -85.0, 1, muralTex10); // Architectural Silk Guest Lounge
-    createMonumental2BlockMural(-hallWidth / 2, 2.92, -92.5, 1, muralTex11); // Master Penthouse Suite
-    createMonumental2BlockMural(-hallWidth / 2, 2.92, -100.0, 1, muralTex12); // Grand Panoramic Living
-    createMonumental2BlockMural(-hallWidth / 2, 2.92, -107.5, 1, muralTex13); // Royal Dining Suite
+    // Section 3: Between Chamber 3 and Chamber 5 (Z = -73.0 to -117.0) - 6 Murals
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -76.8, 1, muralTex10); // Luxury Walk-in Wardrobe & Vanity
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -84.0, 1, muralTex11); // Executive Media Room & Library
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -91.2, 1, muralTex12); // High-End Modular Suite
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -98.4, 1, muralTex13); // Contemporary Dining Pavilion
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -105.6, 1, muralTex14); // Elegant Master Bathroom Spa
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -112.8, 1, muralTex15); // Coral Pooja Mandir Sanctuary
+    // [Portal V at Z = -120: Chamber 5 Entry]
+    // Section 4: After Chamber 5 (Z = -123.0 to -167.0) - 6 Murals
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -126.8, 1, muralTex12); // Designer Suite Gallery
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -134.0, 1, muralTex13); // Contemporary Living Art
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -141.2, 1, muralTex14); // Luxury Master Lounge
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -148.4, 1, muralTex15); // Executive Media Atrium
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -155.6, 1, muralTex16); // Fine Classical Millwork
+    createMonumental2BlockMural(-hallWidth / 2, 2.92, -162.8, 1, muralTex17); // Terminus Gallery Masterpiece
 
-    // RIGHT WALL (facingDir = -1, X = hallWidth/2) - 2 Blocks Per Image
-    // Section 1: Entry to Chamber 2 (Z = +10 to -40)
-    createMonumental2BlockMural(hallWidth / 2, 2.92, 8.5, -1, muralTex14);  // Executive Library Lounge
-    createMonumental2BlockMural(hallWidth / 2, 2.92, 1.0, -1, muralTex15);  // Master Bedroom Spa Suite
-    createMonumental2BlockMural(hallWidth / 2, 2.92, -6.5, -1, muralTex16); // Bespoke Walk-in Wardrobe
-    createMonumental2BlockMural(hallWidth / 2, 2.92, -14.0, -1, muralTex1); // Double-Height Grand Living
-    createMonumental2BlockMural(hallWidth / 2, 2.92, -21.5, -1, muralTex2); // Royal Velvet Dining Hall
-    createMonumental2BlockMural(hallWidth / 2, 2.92, -29.0, -1, muralTex3); // Master Bedroom Recliner Suite
-    createMonumental2BlockMural(hallWidth / 2, 2.92, -36.5, -1, muralTex4); // Master Bedroom Vanity
+    // RIGHT WALL (facingDir = -1, X = hallWidth/2) - Curated Non-Overlapping Intervals
+    // Section 1: Entry to Chamber 2 (Z = +8.0 to -42.0) - 6 Murals with 0.74m architectural gaps
+    createMonumental2BlockMural(hallWidth / 2, 2.92, 3.8, -1, muralTex16);  // Champagne Silk Guest Bedroom
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -4.2, -1, muralTex17);  // Architectural Lighting Atrium
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -12.2, -1, muralTex18); // Private Cinema Suite
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -20.0, -1, muralTex19); // Warm Oak Study & Library
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -27.8, -1, muralTex20); // Luxury Penthouse Bedroom Suite
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -35.6, -1, muralTex21); // Grand Staircase & Foyer
     // [Portal II at Z = -45: Chamber 2 Entry]
-    // Section 2: Between Chamber 2 and Chamber 4 (Z = -51 to -89)
-    createMonumental2BlockMural(hallWidth / 2, 2.92, -52.5, -1, muralTex5); // Parents Classical Bedroom
-    createMonumental2BlockMural(hallWidth / 2, 2.92, -60.0, -1, muralTex6); // Parents Velvet Lounge
-    createMonumental2BlockMural(hallWidth / 2, 2.92, -67.5, -1, muralTex7); // Coral Velvet Pooja Mandir
-    createMonumental2BlockMural(hallWidth / 2, 2.92, -75.0, -1, muralTex8); // Sacred Mandir Jali Suite
-    createMonumental2BlockMural(hallWidth / 2, 2.92, -82.5, -1, muralTex9); // Luxury Guest Suite
+    // Section 2: Between Chamber 2 and Chamber 4 (Z = -48.0 to -92.0) - 6 Murals
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -51.8, -1, muralTex22); // Velvet Lounge & Cocktail Bar
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -59.0, -1, muralTex23); // Acoustic Home Theatre
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -66.2, -1, muralTex24); // Presidential Master Suite
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -73.4, -1, muralTex1);  // Double-Height Living Suite
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -80.6, -1, muralTex2);  // Royal Velvet Dining Hall
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -87.8, -1, muralTex3);  // Master Bedroom Recliner Suite
     // [Portal IV at Z = -95: Chamber 4 Entry]
-    // Section 3: After Chamber 4 (Z = -101 to -115)
-    createMonumental2BlockMural(hallWidth / 2, 2.92, -102.5, -1, muralTex10); // Architectural Silk Guest Lounge
-    createMonumental2BlockMural(hallWidth / 2, 2.92, -110.0, -1, muralTex11); // Master Penthouse Suite
+    // Section 3: Between Chamber 4 and Chamber 6 (Z = -98.0 to -142.0) - 6 Murals
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -102.5, -1, muralTex4); // Penthouse Terrace Pavilion
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -109.7, -1, muralTex5); // Calacatta Marble Reception Lounge
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -116.9, -1, muralTex6); // Bespoke Executive Lounge
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -124.1, -1, muralTex7); // Monolithic Stone Bar
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -131.3, -1, muralTex8); // Modernist Master Suite
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -138.5, -1, muralTex9); // High-Precision Joinery
+    // [Portal VI at Z = -145: Chamber 6 Entry]
+    // Section 4: After Chamber 6 (Z = -148.0 to -167.0) - 2 Murals
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -152.0, -1, muralTex10); // Luxury Walk-in Archive
+    createMonumental2BlockMural(hallWidth / 2, 2.92, -159.5, -1, muralTex11); // Executive Reception Hall
 
     // --- CORRIDOR WALLS & INSTANCED BOISERIE PANEL SYSTEM (2 DRAW CALLS TOTAL) ---
     const unitBoxGeo = new THREE.BoxGeometry(1, 1, 1);
-    const maxBoiserieInstances = 650;
+    const maxBoiserieInstances = 1200;
     const stonePanelInstanced = new THREE.InstancedMesh(unitBoxGeo, stoneTrimMat, maxBoiserieInstances);
     const goldPanelInstanced = new THREE.InstancedMesh(unitBoxGeo, antiqueGoldMat, maxBoiserieInstances);
     stonePanelInstanced.instanceMatrix.setUsage(THREE.StaticDrawUsage);
@@ -2558,15 +3494,15 @@ export default function ThreeMansionEngine() {
 
     const buildWallWithDoorways = (
       xPos: number,
-      doorZ1: number,
-      doorZ2: number,
+      doorZs: number[],
       sideFacing: number
     ) => {
       const wallGroup = new THREE.Group();
-      const zDoors = [doorZ1, doorZ2];
+      const zDoors = [...doorZs].sort((a, b) => b - a);
 
       const addWallSegment = (zStart: number, zEnd: number) => {
         const segLen = zStart - zEnd;
+        if (segLen <= 0.05) return;
         const segZ = (zStart + zEnd) / 2;
 
         // 1. Fine Warm Limestone Plaster Wall
@@ -2655,14 +3591,16 @@ export default function ThreeMansionEngine() {
         }
       };
 
-      // Segment 1: from hallZStart to doorZ1 + 3
-      addWallSegment(hallZStart, doorZ1 + 3);
+      // Segment 1: from hallZStart to first door
+      addWallSegment(hallZStart, zDoors[0] + 3);
 
-      // Segment 2: between doorZ1 - 3 and doorZ2 + 3
-      addWallSegment(doorZ1 - 3, doorZ2 + 3);
+      // Segments between doors
+      for (let i = 0; i < zDoors.length - 1; i++) {
+        addWallSegment(zDoors[i] - 3, zDoors[i + 1] + 3);
+      }
 
-      // Segment 3: from doorZ2 - 3 to hallZEnd
-      addWallSegment(doorZ2 - 3, hallZEnd);
+      // Segment from last door to hallZEnd
+      addWallSegment(zDoors[zDoors.length - 1] - 3, hallZEnd);
 
       // Header walls above doorways
       zDoors.forEach((dz) => {
@@ -2676,19 +3614,19 @@ export default function ThreeMansionEngine() {
         wallGroup.add(header);
       });
 
-      scene.add(wallGroup);
+      hallwayGroup.add(wallGroup);
     };
 
     // Build Left (X = -5) and Right (X = +5) Walls
-    buildWallWithDoorways(-hallWidth / 2, -20, -70, 1);
-    buildWallWithDoorways(hallWidth / 2, -45, -95, -1);
+    buildWallWithDoorways(-hallWidth / 2, [-20, -70, -120], 1);
+    buildWallWithDoorways(hallWidth / 2, [-45, -95, -145], -1);
 
     // Finalize instanced boiserie panel meshes
     stonePanelInstanced.count = stoneBarIdx;
     stonePanelInstanced.instanceMatrix.needsUpdate = true;
     goldPanelInstanced.count = goldBarIdx;
     goldPanelInstanced.instanceMatrix.needsUpdate = true;
-    scene.add(stonePanelInstanced, goldPanelInstanced);
+    hallwayGroup.add(stonePanelInstanced, goldPanelInstanced);
 
     // --- 6. PHYSICAL 3D DOORWAYS & ARCHWAYS (ANTIQUE GOLD & HONEY OAK TRIM) ---
     const portals = [
@@ -2696,6 +3634,8 @@ export default function ThreeMansionEngine() {
       { z: -45, xDoor: hallWidth / 2, dir: 1, roman: "II" },
       { z: -70, xDoor: -hallWidth / 2, dir: -1, roman: "III" },
       { z: -95, xDoor: hallWidth / 2, dir: 1, roman: "IV" },
+      { z: -120, xDoor: -hallWidth / 2, dir: -1, roman: "V" },
+      { z: -145, xDoor: hallWidth / 2, dir: 1, roman: "VI" },
     ];
 
     portals.forEach((p) => {
@@ -2743,7 +3683,7 @@ export default function ThreeMansionEngine() {
       plaque.position.set(-p.dir * 0.38, doorOpenHeight + 0.75, 0);
 
       archGroup.add(leftJamb, rightJamb, lintel, thresh, plaque);
-      scene.add(archGroup);
+      hallwayGroup.add(archGroup);
     });
 
     // =========================================================================
@@ -2754,7 +3694,6 @@ export default function ThreeMansionEngine() {
     let grandDustPoints: THREE.Points | null = null;
     const grandDustCount = 50;
 
-    let versacePendantGroup: THREE.Group | null = null;
     let versaceDustPoints: THREE.Points | null = null;
     const versaceDustCount = 40;
 
@@ -2763,7 +3702,6 @@ export default function ThreeMansionEngine() {
     let incenseParticles: THREE.Points | null = null;
     const incenseCount = 35;
     const incenseOrigin = new THREE.Vector3(-6.53, 1.15, 0.42);
-    let corporateKineticToy: THREE.Group | null = null;
 
     // Architectural Shell Builder: ensures zero void gaps, continuous walls, floors, baseboards, and cornices
     const buildRoomShell = (
@@ -2886,11 +3824,11 @@ export default function ThreeMansionEngine() {
       artW: number,
       artH: number,
       frameThick = 0.08,
-      hasPictureLight = true
+      hasPictureLight = true,
+      matBorder = 0.12
     ) => {
       const artGroup = new THREE.Group();
 
-      const matBorder = 0.16;
       const totalW = artW + matBorder * 2 + frameThick * 2;
       const totalH = artH + matBorder * 2 + frameThick * 2;
 
@@ -2900,6 +3838,7 @@ export default function ThreeMansionEngine() {
         new THREE.MeshStandardMaterial({
           color: 0x1f1b18,
           roughness: 0.95,
+          fog: false,
         })
       );
       backingMesh.position.z = 0;
@@ -2910,18 +3849,26 @@ export default function ThreeMansionEngine() {
         new THREE.MeshStandardMaterial({
           color: 0xf5f1e8,
           roughness: 0.92,
+          fog: false,
         })
       );
       matMesh.position.z = 0.008;
 
       // 3. Photographic Fine Art Canvas
+      const canvasMat = new THREE.MeshStandardMaterial({
+        map: tex,
+        emissiveMap: tex,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.35, // Museum picture-light radiance for crystal clarity
+        roughness: 0.32,
+        metalness: 0.04,
+        transparent: true,
+        opacity: 1.0,
+        fog: false,
+      });
       const canvasMesh = new THREE.Mesh(
         new THREE.PlaneGeometry(artW, artH),
-        new THREE.MeshStandardMaterial({
-          map: tex,
-          roughness: 0.32,
-          metalness: 0.04,
-        })
+        canvasMat
       );
       canvasMesh.position.z = 0.016;
 
@@ -2961,50 +3908,61 @@ export default function ThreeMansionEngine() {
 
       artGroup.add(mouldTop, mouldBottom, mouldLeft, mouldRight);
 
-      // 5. Architectural Picture Downlight Hood (Warm Emissive Halo)
+      // 5. Architectural Picture Downlight Hoods (Triple for wide frames > 5.5m, Single for standard)
       if (hasPictureLight) {
-        const hoodW = Math.min(2.0, artW * 0.65);
-        const lightHood = new THREE.Mesh(
-          new THREE.BoxGeometry(hoodW, 0.04, 0.16),
-          antiqueGoldMat
-        );
-        lightHood.position.set(0, totalH / 2 + 0.14, 0.12);
+        const lightOffsets = artW > 5.5 ? [-artW * 0.32, 0, artW * 0.32] : [0];
+        const hoodW = artW > 5.5 ? Math.min(2.0, artW * 0.22) : Math.min(2.0, artW * 0.65);
 
-        const lightStrip = new THREE.Mesh(
-          new THREE.BoxGeometry(hoodW - 0.06, 0.014, 0.05),
-          new THREE.MeshStandardMaterial({
-            color: 0xffeed8,
-            emissive: 0xffdca0,
-            emissiveIntensity: 1.5,
-            roughness: 0.2,
-          })
-        );
-        lightStrip.position.set(0, totalH / 2 + 0.12, 0.12);
+        lightOffsets.forEach((ox) => {
+          const lightHood = new THREE.Mesh(
+            new THREE.BoxGeometry(hoodW, 0.04, 0.16),
+            antiqueGoldMat
+          );
+          lightHood.position.set(ox, totalH / 2 + 0.14, 0.12);
 
-        const arm1 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.16), antiqueGoldMat);
-        arm1.rotation.x = Math.PI / 2;
-        arm1.position.set(-hoodW * 0.3, totalH / 2 + 0.14, 0.06);
+          const lightStrip = new THREE.Mesh(
+            new THREE.BoxGeometry(hoodW - 0.06, 0.014, 0.05),
+            new THREE.MeshStandardMaterial({
+              color: 0xffeed8,
+              emissive: 0xffdca0,
+              emissiveIntensity: 1.5,
+              roughness: 0.2,
+              fog: false,
+            })
+          );
+          lightStrip.position.set(ox, totalH / 2 + 0.12, 0.12);
 
-        const arm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.16), antiqueGoldMat);
-        arm2.rotation.x = Math.PI / 2;
-        arm2.position.set(hoodW * 0.3, totalH / 2 + 0.14, 0.06);
+          const arm1 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.16), antiqueGoldMat);
+          arm1.rotation.x = Math.PI / 2;
+          arm1.position.set(ox - hoodW * 0.3, totalH / 2 + 0.14, 0.06);
 
-        artGroup.add(lightHood, lightStrip, arm1, arm2);
+          const arm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.16), antiqueGoldMat);
+          arm2.rotation.x = Math.PI / 2;
+          arm2.position.set(ox + hoodW * 0.3, totalH / 2 + 0.14, 0.06);
+
+          artGroup.add(lightHood, lightStrip, arm1, arm2);
+        });
       }
 
       // 6. Museum Brass Title Plaque
-      const plaque = new THREE.Mesh(
-        new THREE.BoxGeometry(0.65, 0.14, 0.015),
+      const plaqueMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(Math.min(1.2, artW * 0.25), 0.14, 0.015),
         new THREE.MeshStandardMaterial({
           color: 0xc8aa6e,
           roughness: 0.30,
           metalness: 0.70,
+          fog: false,
         })
       );
-      plaque.position.set(0, -totalH / 2 - 0.14, 0.01);
-      artGroup.add(plaque);
+      plaqueMesh.position.set(0, -totalH / 2 - 0.14, 0.01);
+      artGroup.add(plaqueMesh);
 
-      return artGroup;
+      return {
+        group: artGroup,
+        canvasMesh,
+        canvasMat,
+        plaqueMesh,
+      };
     };
 
     // -------------------------------------------------------------------------
@@ -3036,561 +3994,75 @@ export default function ThreeMansionEngine() {
       sheerDrapery.rotation.y = Math.PI / 2;
       roomGroup.add(sheerDrapery);
 
-      // Artwork 1 (Back Wall Hero): The Monolithic Living Suite (6.6m x 3.8m Centerpiece)
-      const ch1ArtLiving = createFramedArtMesh(texCh1Living, 6.6, 3.8, 0.10, true);
-      ch1ArtLiving.position.set(backX + 0.10, roomH / 2 + 0.2, 0);
-      ch1ArtLiving.rotation.y = Math.PI / 2;
-      roomGroup.add(ch1ArtLiving);
+      // Artwork 1 (Back Wall Hero): Monumental 12.2m x 5.8m 4K Centerpiece commanding entire feature wall
+      const ch1HeroArt = createFramedArtMesh(texCh1Living, 12.2, 5.8, 0.11, true, 0.14);
+      ch1HeroArt.group.position.set(backX + 0.10, 3.40, 0);
+      ch1HeroArt.group.rotation.y = Math.PI / 2;
+      roomGroup.add(ch1HeroArt.group);
+      heroArtRefs.current["grand"] = ch1HeroArt;
 
       // Flanking heavy textured curtains on left & right
       const curtainMat = new THREE.MeshStandardMaterial({
         color: 0x8a8279,
         roughness: 0.92,
       });
-      const curtainLeft = new THREE.Mesh(new THREE.BoxGeometry(0.35, roomH, 2.2), curtainMat);
-      curtainLeft.position.set(backX + 0.22, roomH / 2, -roomD / 2 + 1.1);
-      const curtainRight = new THREE.Mesh(new THREE.BoxGeometry(0.35, roomH, 2.2), curtainMat);
-      curtainRight.position.set(backX + 0.22, roomH / 2, roomD / 2 - 1.1);
+      const curtainLeft = new THREE.Mesh(new THREE.BoxGeometry(0.35, roomH, 1.8), curtainMat);
+      curtainLeft.position.set(backX + 0.22, roomH / 2, -roomD / 2 + 0.9);
+      const curtainRight = new THREE.Mesh(new THREE.BoxGeometry(0.35, roomH, 1.8), curtainMat);
+      curtainRight.position.set(backX + 0.22, roomH / 2, roomD / 2 - 0.9);
       roomGroup.add(curtainLeft, curtainRight);
 
-      // Side Wall 1 (Z = -roomD/2): Limestone wall exhibiting 2 fine art project works
+      // Side Wall 1 (Z = -roomD/2): Limestone wall exhibiting 2 monumental fine art project works
       const sideWall1 = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), wallMat);
       sideWall1.position.set(0, roomH / 2, -roomD / 2);
 
-      // Artwork 2 (Side Wall 1 Left): The Horizon Dining Pavilion
-      const ch1ArtDining = createFramedArtMesh(texCh1Dining, 4.4, 2.8, 0.08, true);
-      ch1ArtDining.position.set(-2.8, roomH / 2, -roomD / 2 + 0.08);
+      // Artwork 2 (Side Wall 1 Left): The Horizon Dining Pavilion (Monumental 5.8m x 3.8m)
+      const ch1ArtDining = createFramedArtMesh(texCh1Dining, 5.8, 3.8, 0.09, true);
+      ch1ArtDining.group.position.set(-3.5, 3.60, -roomD / 2 + 0.08);
 
-      // Artwork 3 (Side Wall 1 Right): The Family Media Parlour
-      const ch1ArtParlour = createFramedArtMesh(texCh1Parlour, 4.4, 2.8, 0.08, true);
-      ch1ArtParlour.position.set(2.8, roomH / 2, -roomD / 2 + 0.08);
-      roomGroup.add(sideWall1, ch1ArtDining, ch1ArtParlour);
+      // Artwork 3 (Side Wall 1 Right): The Family Media Parlour (Monumental 5.8m x 3.8m)
+      const ch1ArtParlour = createFramedArtMesh(texCh1Parlour, 5.8, 3.8, 0.09, true);
+      ch1ArtParlour.group.position.set(3.5, 3.60, -roomD / 2 + 0.08);
+      roomGroup.add(sideWall1, ch1ArtDining.group, ch1ArtParlour.group);
 
-      // Side Wall 2 (Z = +roomD/2): Fluted honey oak wall exhibiting 2 fine art project works
+      // Side Wall 2 (Z = +roomD/2): Fluted honey oak wall exhibiting 2 monumental fine art project works
       const sideWall2 = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), flutedOakMat);
       sideWall2.position.set(0, roomH / 2, roomD / 2);
       sideWall2.rotation.y = Math.PI;
 
-      // Artwork 4 (Side Wall 2 Left): The Atelier Floral Lounge
-      const ch1ArtLounge = createFramedArtMesh(texCh1Lounge, 4.2, 2.8, 0.08, true);
-      ch1ArtLounge.position.set(-2.8, roomH / 2, roomD / 2 - 0.08);
-      ch1ArtLounge.rotation.y = Math.PI;
-
-      // Artwork 5 (Side Wall 2 Right): The Master Entertainment Wall
-      const ch1ArtMedia = createFramedArtMesh(texCh1Media, 4.2, 2.8, 0.08, true);
-      ch1ArtMedia.position.set(2.8, roomH / 2, roomD / 2 - 0.08);
-      ch1ArtMedia.rotation.y = Math.PI;
-      roomGroup.add(sideWall2, ch1ArtLounge, ch1ArtMedia);
-
-      // --- REAL 3D BESPOKE LUXURY FURNITURE ENSEMBLE ---
-      // 1. Hand-Tufted High-Pile Wool Bouclé Area Rug (Expansive 6.6m x 5.0m)
-      const rugGroup = new THREE.Group();
-      rugGroup.position.set(-0.55, 0, 0);
-
-      // Deep Grounding Ambient Contact Shadow under Rug
-      const rugShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(7.0, 5.4),
-        new THREE.MeshBasicMaterial({
-          color: 0x120c06,
-          transparent: true,
-          opacity: 0.42,
-          depthWrite: false,
-        })
-      );
-      rugShadow.rotation.x = -Math.PI / 2;
-      rugShadow.position.y = 0.002;
-
-      // Primary Woven Wool Rug Plane
-      const grandRug = new THREE.Mesh(new THREE.PlaneGeometry(6.6, 5.0), woolBoucleRugMat);
-      grandRug.rotation.x = -Math.PI / 2;
-      grandRug.position.y = 0.008;
-
-      // Raised Border Lip / Pile Thickness Reveal (Eliminates flat paper look)
-      const rugBorderTop = new THREE.Mesh(new THREE.BoxGeometry(6.64, 0.014, 0.06), woolBoucleRugMat);
-      rugBorderTop.position.set(0, 0.012, 2.47);
-      const rugBorderBottom = new THREE.Mesh(new THREE.BoxGeometry(6.64, 0.014, 0.06), woolBoucleRugMat);
-      rugBorderBottom.position.set(0, 0.012, -2.47);
-      const rugBorderLeft = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.014, 5.0), woolBoucleRugMat);
-      rugBorderLeft.position.set(-3.27, 0.012, 0);
-      const rugBorderRight = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.014, 5.0), woolBoucleRugMat);
-      rugBorderRight.position.set(3.27, 0.012, 0);
-
-      rugGroup.add(rugShadow, grandRug, rugBorderTop, rugBorderBottom, rugBorderLeft, rugBorderRight);
-      roomGroup.add(rugGroup);
-
-      // 2. Sculpted Modular Bouclé Sectional (Deep Lounge with Seam Welt Piping & Pillowed Crowns)
-      const sofaGroup = new THREE.Group();
-      sofaGroup.position.set(-2.65, 0, 0);
-
-      // Contact Shadow under Sofa Base
-      const sofaShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.4, 4.0),
-        new THREE.MeshBasicMaterial({
-          color: 0x140e08,
-          transparent: true,
-          opacity: 0.52,
-          depthWrite: false,
-        })
-      );
-      sofaShadow.rotation.x = -Math.PI / 2;
-      sofaShadow.position.set(0, 0.003, 0);
-      sofaGroup.add(sofaShadow);
-
-      // Recessed Floating Plinth Base in Dark Bronze
-      const sofaPlinth = new THREE.Mesh(
-        new THREE.BoxGeometry(1.10, 0.08, 3.65),
-        darkBronzeMat
-      );
-      sofaPlinth.position.set(0, 0.07, 0);
-      sofaGroup.add(sofaPlinth);
-
-      // Primary Lower Upholstered Deck
-      const sofaDeck = new THREE.Mesh(
-        new THREE.BoxGeometry(1.18, 0.16, 3.70),
-        boucleMat
-      );
-      sofaDeck.position.set(0, 0.19, 0);
-      sofaGroup.add(sofaDeck);
-
-      // 3 Modular Seat Cushions with Pillowed Crowns & Seam Piping Welts
-      for (let i = -1; i <= 1; i++) {
-        const cz = i * 1.20;
-
-        // Core Cushion Body with soft rounded edges
-        const seatBody = new THREE.Mesh(
-          new THREE.BoxGeometry(0.98, 0.18, 1.14),
-          boucleMat
-        );
-        seatBody.position.set(0.04, 0.36, cz);
-
-        // Pillowed Crown Top (convex cushion dome catching highlights)
-        const seatCrown = new THREE.Mesh(
-          new THREE.BoxGeometry(0.94, 0.05, 1.10),
-          boucleMat
-        );
-        seatCrown.position.set(0.04, 0.46, cz);
-
-        // French Welt Perimeter Seam Piping (tailored upholstery bead)
-        const weltFront = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.14, 8), boucleMat);
-        weltFront.rotation.x = Math.PI / 2;
-        weltFront.position.set(0.51, 0.44, cz);
-
-        const weltLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.98, 8), boucleMat);
-        weltLeft.rotation.z = Math.PI / 2;
-        weltLeft.position.set(0.04, 0.44, cz - 0.57);
-
-        const weltRight = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.98, 8), boucleMat);
-        weltRight.rotation.z = Math.PI / 2;
-        weltRight.position.set(0.04, 0.44, cz + 0.57);
-
-        sofaGroup.add(seatBody, seatCrown, weltFront, weltLeft, weltRight);
-      }
-
-      // Angled Ergonomic Backrest Rail Structure (Tilted 10 degrees backward)
-      const backRail = new THREE.Mesh(
-        new THREE.BoxGeometry(0.26, 0.65, 3.70),
-        boucleMat
-      );
-      backRail.position.set(-0.44, 0.72, 0);
-      backRail.rotation.z = -0.16;
-      sofaGroup.add(backRail);
-
-      // 3 Plump Loose Back Cushions with Natural Lived-In Asymmetric Tilts
-      const backCushionConfigs = [
-        { z: -1.20, rotY: 0.04, rotZ: -0.19 },
-        { z: 0.00, rotY: 0.00, rotZ: -0.17 },
-        { z: 1.20, rotY: -0.05, rotZ: -0.16 },
-      ];
-      backCushionConfigs.forEach((cfg) => {
-        const backCushion = new THREE.Mesh(
-          new THREE.BoxGeometry(0.20, 0.56, 1.10),
-          boucleMat
-        );
-        backCushion.position.set(-0.34, 0.74, cfg.z);
-        backCushion.rotation.y = cfg.rotY;
-        backCushion.rotation.z = cfg.rotZ;
-
-        // Perimeter Piping Bead for Back Cushion
-        const bWeltTop = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 1.10, 8), boucleMat);
-        bWeltTop.rotation.x = Math.PI / 2;
-        bWeltTop.position.set(0, 0.28, 0);
-        backCushion.add(bWeltTop);
-
-        sofaGroup.add(backCushion);
-      });
-
-      // Sculpted Low-Profile Armrests (Left & Right) with Bullnose Rounded Caps
-      const armLeft = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.42, 0.26), boucleMat);
-      armLeft.position.set(0, 0.36, -1.86);
-      const armLeftCap = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.18, 16), boucleMat);
-      armLeftCap.rotation.z = Math.PI / 2;
-      armLeftCap.position.set(0, 0.57, -1.86);
-
-      const armRight = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.42, 0.26), boucleMat);
-      armRight.position.set(0, 0.36, 1.86);
-      const armRightCap = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.18, 16), boucleMat);
-      armRightCap.rotation.z = Math.PI / 2;
-      armRightCap.position.set(0, 0.57, 1.86);
-
-      sofaGroup.add(armLeft, armLeftCap, armRight, armRightCap);
-
-      // Chaise Lounge Return Module (L-Shape Configuration extending at Z = +2.45m)
-      const chaiseGroup = new THREE.Group();
-      chaiseGroup.position.set(0.72, 0, 1.86);
-
-      const chaisePlinth = new THREE.Mesh(new THREE.BoxGeometry(1.50, 0.08, 1.10), darkBronzeMat);
-      chaisePlinth.position.set(0, 0.07, 0);
-      const chaiseDeck = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.16, 1.14), boucleMat);
-      chaiseDeck.position.set(0, 0.19, 0);
-      const chaiseCushion = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.18, 1.08), boucleMat);
-      chaiseCushion.position.set(0, 0.36, 0);
-      const chaiseCrown = new THREE.Mesh(new THREE.BoxGeometry(1.44, 0.05, 1.04), boucleMat);
-      chaiseCrown.position.set(0, 0.46, 0);
-      chaiseGroup.add(chaisePlinth, chaiseDeck, chaiseCushion, chaiseCrown);
-      sofaGroup.add(chaiseGroup);
-
-      // --- ASYMMETRIC LIVED-IN ACCESSORIES ON SOFA ---
-      // 1. Casually Draped Cashmere Throw Blanket over Left Armrest
-      const throwBlanket = new THREE.Group();
-      throwBlanket.position.set(0.08, 0.58, -1.86);
-      throwBlanket.rotation.y = 0.10;
-
-      const throwTop = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.025, 0.34), cashmereThrowMat);
-      const throwDrapeOuter = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.38, 0.025), cashmereThrowMat);
-      throwDrapeOuter.position.set(0, -0.18, -0.17);
-      const throwDrapeInner = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.22, 0.025), cashmereThrowMat);
-      throwDrapeInner.position.set(0, -0.10, 0.17);
-      const throwFold = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.035, 0.38), cashmereThrowMat);
-      throwFold.position.set(0.04, 0.015, 0.20);
-      throwFold.rotation.z = -0.06;
-      throwBlanket.add(throwTop, throwDrapeOuter, throwDrapeInner, throwFold);
-      sofaGroup.add(throwBlanket);
-
-      // 2. Curated Accent Pillows (Contrasting Olive Velvet, Ivory Bouclé, and Cognac Leather)
-      // Pillow 1: Rich Olive Velvet (50x50cm) nestled in corner at 22° tilt
-      const pillowOlive = new THREE.Mesh(
-        new THREE.BoxGeometry(0.16, 0.48, 0.48),
-        oliveVelvetMat
-      );
-      pillowOlive.position.set(-0.20, 0.58, -1.45);
-      pillowOlive.rotation.y = 0.38;
-      pillowOlive.rotation.z = -0.25;
-
-      // Pillow 2: Ivory Bouclé Lumbar Pillow overlapping Olive Pillow
-      const pillowIvory = new THREE.Mesh(
-        new THREE.BoxGeometry(0.12, 0.28, 0.44),
-        boucleMat
-      );
-      pillowIvory.position.set(-0.04, 0.50, -1.25);
-      pillowIvory.rotation.y = -0.22;
-      pillowIvory.rotation.z = -0.15;
-
-      // Pillow 3: Cognac Saddle Leather Accent Pillow on Chaise Lounge with modeled karate chop crease
-      const pillowCognac = new THREE.Mesh(
-        new THREE.BoxGeometry(0.42, 0.14, 0.42),
-        cognacLeatherMat
-      );
-      pillowCognac.position.set(0.85, 0.52, 1.86);
-      pillowCognac.rotation.y = 0.28;
-      pillowCognac.rotation.x = 0.12;
-
-      const pillowCrease = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.012, 0.012, 0.40, 8),
-        cognacLeatherMat
-      );
-      pillowCrease.rotation.x = Math.PI / 2;
-      pillowCrease.position.set(0.85, 0.58, 1.86);
-
-      sofaGroup.add(pillowOlive, pillowIvory, pillowCognac, pillowCrease);
-      roomGroup.add(sofaGroup);
-
-      // 3. Sculpted Cognac Leather Swivel Lounge Armchair (Foreground Left Composition)
-      const chairGroup = new THREE.Group();
-      chairGroup.position.set(1.10, 0, -2.15);
-      chairGroup.rotation.y = -0.52; // Angled ~30° into the room, revealing front bucket, deep seat, and neckroll
-
-      // 4-Star Spider Swivel Base in Dark Patinated Bronze
-      const baseHub = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.22, 20), darkBronzeMat);
-      baseHub.position.set(0, 0.18, 0);
-      chairGroup.add(baseHub);
-
-      // 4 Cantilevered Swivel Legs with Satin Brass Floor Glides & Contact Shadows
-      for (let a = 0; a < 4; a++) {
-        const legAngle = a * (Math.PI / 2);
-        const legArm = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.032, 0.04), darkBronzeMat);
-        legArm.rotation.y = legAngle;
-        legArm.rotation.z = 0.18; // Slopes gracefully down to floor
-        legArm.position.set(Math.cos(legAngle) * 0.18, 0.11, Math.sin(legAngle) * 0.18);
-
-        // Machined Satin Brass Glide Disc
-        const glide = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.034, 0.016, 16), antiqueGoldMat);
-        glide.position.set(Math.cos(legAngle) * 0.36, 0.018, Math.sin(legAngle) * 0.36);
-
-        // Grounding Contact Shadow Disc under Glide
-        const glideShadow = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.055, 0.055, 0.002, 16),
-          new THREE.MeshBasicMaterial({ color: 0x120c06, transparent: true, opacity: 0.65 })
-        );
-        glideShadow.position.set(Math.cos(legAngle) * 0.36, 0.009, Math.sin(legAngle) * 0.36);
-
-        chairGroup.add(legArm, glide, glideShadow);
-      }
-
-      // Sculpted Bucket Seat Shell in Cognac Saddle Leather
-      const seatBucket = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.16, 0.82), cognacLeatherMat);
-      seatBucket.position.set(0, 0.38, 0);
-      seatBucket.rotation.z = -0.12;
-
-      // Ergonomic Wrapping Side Wings / Armrests
-      const wingLeft = new THREE.Mesh(new THREE.BoxGeometry(0.80, 0.32, 0.12), cognacLeatherMat);
-      wingLeft.position.set(0, 0.52, -0.42);
-      wingLeft.rotation.z = -0.12;
-
-      const wingRight = new THREE.Mesh(new THREE.BoxGeometry(0.80, 0.32, 0.12), cognacLeatherMat);
-      wingRight.position.set(0, 0.52, 0.42);
-      wingRight.rotation.z = -0.12;
-
-      // Contoured Reclined High-Back Shell
-      const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.84, 0.78), cognacLeatherMat);
-      chairBack.position.set(-0.32, 0.82, 0);
-      chairBack.rotation.z = -0.26;
-
-      // Dark Bronze Perimeter Welt Reveal Trim
-      const weltBackTop = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.78, 12), darkBronzeMat);
-      weltBackTop.rotation.x = Math.PI / 2;
-      weltBackTop.position.set(-0.43, 1.22, 0);
-
-      // Inset Plump Leather Seat Cushion with Double-Needle Seam Reveal
-      const chairCushion = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.14, 0.74), cognacLeatherMat);
-      chairCushion.position.set(0.02, 0.46, 0);
-      chairCushion.rotation.z = -0.12;
-
-      // Cylindrical Leather Headrest Pillow with Dark Bronze Mounting Brackets
-      const headrestRoll = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.56, 16), cognacLeatherMat);
-      headrestRoll.rotation.x = Math.PI / 2;
-      headrestRoll.position.set(-0.48, 1.26, 0);
-
-      const bracket1 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.08), darkBronzeMat);
-      bracket1.rotation.z = Math.PI / 2;
-      bracket1.position.set(-0.42, 1.26, -0.18);
-
-      const bracket2 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.08), darkBronzeMat);
-      bracket2.rotation.z = Math.PI / 2;
-      bracket2.position.set(-0.42, 1.26, 0.18);
-
-      chairGroup.add(
-        seatBucket,
-        wingLeft,
-        wingRight,
-        chairBack,
-        weltBackTop,
-        chairCushion,
-        headrestRoll,
-        bracket1,
-        bracket2
-      );
-      roomGroup.add(chairGroup);
-
-      // 4. Layered Monolithic Coffee Table Grouping (Honed Nero Marquina Marble & Cantilevered Smoked Oak)
-      const coffeeTableGroup = new THREE.Group();
-      coffeeTableGroup.position.set(-0.55, 0, 0);
-
-      // --- TIER 1: HONED NERO MARQUINA MARBLE SLAB ---
-      // Grounding Contact Shadows under Sled Legs
-      for (const sz of [-0.78, 0.78]) {
-        const legShadow = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.92, 0.12),
-          new THREE.MeshBasicMaterial({ color: 0x120c06, transparent: true, opacity: 0.65, depthWrite: false })
-        );
-        legShadow.rotation.x = -Math.PI / 2;
-        legShadow.position.set(0, 0.009, sz);
-        coffeeTableGroup.add(legShadow);
-
-        // Brushed Antique Gold Sled Leg
-        const sledLeg = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.22, 0.04), antiqueGoldMat);
-        sledLeg.position.set(0, 0.12, sz);
-        coffeeTableGroup.add(sledLeg);
-      }
-
-      // Honed Nero Marquina Marble Primary Slab
-      const marbleSlab = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.07, 1.90), neroMarquinaMat);
-      marbleSlab.position.set(0, 0.265, 0);
-
-      // Bullnose Chamfer Perimeter Edges (reflects subtle specular light)
-      const chamferFront = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 1.90), neroMarquinaMat);
-      chamferFront.position.set(0.47, 0.30, 0);
-      chamferFront.rotation.z = Math.PI / 4;
-      const chamferBack = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 1.90), neroMarquinaMat);
-      chamferBack.position.set(-0.47, 0.30, 0);
-      chamferBack.rotation.z = Math.PI / 4;
-      coffeeTableGroup.add(marbleSlab, chamferFront, chamferBack);
-
-      // --- TIER 2: CANTILEVERED SMOKED OAK BRIDGE TABLE ---
-      const oakBridge = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.045, 1.15), flutedOakMat);
-      oakBridge.position.set(0.20, 0.44, 0.20);
-
-      // Mitred Waterfall Return Leg cascading down to the rug
-      const oakWaterfall = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.42, 1.15), flutedOakMat);
-      oakWaterfall.position.set(0.45, 0.23, 0.20);
-
-      const waterfallShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.12, 1.20),
-        new THREE.MeshBasicMaterial({ color: 0x120c06, transparent: true, opacity: 0.65, depthWrite: false })
-      );
-      waterfallShadow.rotation.x = -Math.PI / 2;
-      waterfallShadow.position.set(0.45, 0.009, 0.20);
-
-      // Satin Brass Riser Foot resting on marble slab
-      const oakRiser = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.14, 0.90), antiqueGoldMat);
-      oakRiser.position.set(-0.05, 0.37, 0.20);
-
-      coffeeTableGroup.add(oakBridge, oakWaterfall, waterfallShadow, oakRiser);
-
-      // --- CURATED EDITORIAL STAGING DECOR ON COFFEE TABLES ---
-      // 1. Stack of Architectural Hardcover Monographs (Natural 14° angle on Marble Slab)
-      const bookStack = new THREE.Group();
-      bookStack.position.set(-0.24, 0.30, -0.48);
-      bookStack.rotation.y = 0.24; // 14° off-axis human rotation
-
-      // Book 1 (Bottom, Terracotta Linen Cloth Binding)
-      const book1Cover = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.042, 0.28), bookTerracottaMat);
-      const book1Pages = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.038, 0.26), bookPaperPagesMat);
-      book1Pages.position.set(0.015, 0, 0);
-      book1Cover.add(book1Pages);
-
-      // Book 2 (Middle, Matte Charcoal Monograph)
-      const book2Cover = new THREE.Mesh(new THREE.BoxGeometry(0.33, 0.036, 0.24), bookCharcoalMat);
-      book2Cover.position.set(0.01, 0.039, 0.01);
-      const book2Pages = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.032, 0.22), bookPaperPagesMat);
-      book2Pages.position.set(0.012, 0, 0);
-      book2Cover.add(book2Pages);
-
-      // Book 3 (Top, Ivory Parchment with Bookmark Ribbon)
-      const book3Cover = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.024, 0.20), bookIvoryMat);
-      book3Cover.position.set(0.02, 0.069, 0.02);
-      book3Cover.rotation.y = 0.08; // subtle micro-shift on top
-      const book3Pages = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.020, 0.18), bookPaperPagesMat);
-      book3Pages.position.set(0.01, 0, 0);
-      const bookRibbon = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.003, 0.02), antiqueGoldMat);
-      bookRibbon.position.set(0.08, 0.013, 0.06);
-      book3Cover.add(book3Pages, bookRibbon);
-
-      bookStack.add(book1Cover, book2Cover, book3Cover);
-      coffeeTableGroup.add(bookStack);
-
-      // 2. Artisanal Fluted Ceramic Floral Vase with Branching Botanicals
-      const vaseGroup = new THREE.Group();
-      vaseGroup.position.set(-0.16, 0.30, 0.44);
-
-      // Ribbed Ceramic Vase Body
-      const vaseBody = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.14, 0.10, 0.36, 24),
-        darkCeramicMat
-      );
-      vaseBody.position.set(0, 0.18, 0);
-
-      const vaseNeck = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.05, 0.08, 0.10, 24),
-        darkCeramicMat
-      );
-      vaseNeck.position.set(0, 0.40, 0);
-
-      // Delicate Branching Dried Botanicals catching the Golden Sunbeam
-      const botanicals = new THREE.Group();
-      botanicals.position.set(0, 0.44, 0);
-      const branchAngles = [-0.25, 0.15, -0.05, 0.30, -0.18];
-      branchAngles.forEach((bAng, bIdx) => {
-        const branchStem = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.004, 0.006, 0.52 + bIdx * 0.04, 8),
-          darkBronzeMat
-        );
-        branchStem.position.set(Math.sin(bAng) * 0.08, 0.24, Math.cos(bAng) * 0.08);
-        branchStem.rotation.z = bAng;
-        branchStem.rotation.x = Math.sin(bIdx) * 0.2;
-
-        // Seed Pods at Branch Tips
-        const pod = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 8), antiqueGoldMat);
-        pod.position.set(0, 0.27 + bIdx * 0.02, 0);
-        branchStem.add(pod);
-
-        botanicals.add(branchStem);
-      });
-
-      vaseGroup.add(vaseBody, vaseNeck, botanicals);
-      coffeeTableGroup.add(vaseGroup);
-
-      // 3. Heavy Fluted Amber Glass Candle Dish (On Oak Bridge Tier)
-      const candleGroup = new THREE.Group();
-      candleGroup.position.set(0.22, 0.465, 0.22);
-
-      const amberDish = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.16, 0.15, 0.08, 24),
-        amberGlassMat
-      );
-      amberDish.position.set(0, 0.04, 0);
-
-      const soyWax = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.14, 0.14, 0.05, 20),
-        new THREE.MeshStandardMaterial({ color: 0xfbf6ee, roughness: 0.55 })
-      );
-      soyWax.position.set(0, 0.05, 0);
-
-      const wick1 = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.018), darkBronzeMat);
-      wick1.position.set(-0.04, 0.08, 0);
-      const wick2 = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.018), darkBronzeMat);
-      wick2.position.set(0.04, 0.08, 0);
-
-      candleGroup.add(amberDish, soyWax, wick1, wick2);
-      coffeeTableGroup.add(candleGroup);
-
-      // 4. Brushed Brass Catchall Tray with Polished Marble Spheres
-      const trayGroup = new THREE.Group();
-      trayGroup.position.set(-0.25, 0.30, 0.02);
-
-      const brassTray = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.22, 0.20, 0.02, 24),
-        antiqueGoldMat
-      );
-      brassTray.position.set(0, 0.01, 0);
-
-      const marbleSphere1 = new THREE.Mesh(
-        new THREE.SphereGeometry(0.032, 16, 16),
-        new THREE.MeshStandardMaterial({ map: calacattaMarbleTex, roughness: 0.10, metalness: 0.15 })
-      );
-      marbleSphere1.position.set(-0.04, 0.042, 0.02);
-
-      const marbleSphere2 = new THREE.Mesh(
-        new THREE.SphereGeometry(0.026, 16, 16),
-        new THREE.MeshStandardMaterial({ map: calacattaMarbleTex, roughness: 0.10, metalness: 0.15 })
-      );
-      marbleSphere2.position.set(0.04, 0.036, -0.02);
-
-      trayGroup.add(brassTray, marbleSphere1, marbleSphere2);
-      coffeeTableGroup.add(trayGroup);
-      roomGroup.add(coffeeTableGroup);
+      // Artwork 4 (Side Wall 2 Left): The Atelier Floral Lounge (Monumental 5.8m x 3.8m)
+      const ch1ArtLounge = createFramedArtMesh(texCh1Lounge, 5.8, 3.8, 0.09, true);
+      ch1ArtLounge.group.position.set(-3.5, 3.60, roomD / 2 - 0.08);
+      ch1ArtLounge.group.rotation.y = Math.PI;
+
+      // Artwork 5 (Side Wall 2 Right): The Master Entertainment Wall (Monumental 5.8m x 3.8m)
+      const ch1ArtMedia = createFramedArtMesh(texCh1Media, 5.8, 3.8, 0.09, true);
+      ch1ArtMedia.group.position.set(3.5, 3.60, roomD / 2 - 0.08);
+      ch1ArtMedia.group.rotation.y = Math.PI;
+      roomGroup.add(sideWall2, ch1ArtLounge.group, ch1ArtMedia.group);
 
       // 5. EMOTIONAL LIGHTING SCHEME: GOLDEN DAYLIGHT SPILL (2800K Sunlight & 5500K Sky Fill)
       // Angled Golden Sunbeam Directional Key Light
-      const grandSunbeam = new THREE.DirectionalLight(0xffecd0, 1.5);
+      const grandSunbeam = new THREE.DirectionalLight(0xffecd0, 1.6);
       grandSunbeam.position.set(-6.5, 6.8, -4.8);
       grandSunbeam.target.position.set(-0.8, 0.35, 0);
       roomGroup.add(grandSunbeam);
       roomGroup.add(grandSunbeam.target);
 
       // Soft Skylight Fill (Cool Blue Skylight bounce in shaded crevices)
-      const grandSkyFill = new THREE.DirectionalLight(0xe4eff8, 0.5);
+      const grandSkyFill = new THREE.DirectionalLight(0xe4eff8, 0.55);
       grandSkyFill.position.set(3.5, 5.2, 2.5);
       grandSkyFill.target.position.set(-0.8, 0.35, 0);
       roomGroup.add(grandSkyFill);
       roomGroup.add(grandSkyFill.target);
 
-      // 6. Ambient Dust Motes Drifting in Sunbeam Frustum
+      // 6. Ambient Dust Motes Drifting in Sunbeam Frustum across Open Gallery Floor
       const dGeo = new THREE.BufferGeometry();
       const dPos = new Float32Array(grandDustCount * 3);
       for (let i = 0; i < grandDustCount; i++) {
-        dPos[i * 3 + 0] = -2.8 + Math.random() * 4.2; // Centered over lounge & table
-        dPos[i * 3 + 1] = 0.5 + Math.random() * 3.8;
-        dPos[i * 3 + 2] = -2.5 + Math.random() * 5.0;
+        dPos[i * 3 + 0] = -3.5 + Math.random() * 7.0; // Spanning vast reflective floor
+        dPos[i * 3 + 1] = 0.5 + Math.random() * 4.5;
+        dPos[i * 3 + 2] = -4.0 + Math.random() * 8.0;
       }
       dGeo.setAttribute("position", new THREE.BufferAttribute(dPos, 3));
       grandDustPoints = new THREE.Points(
@@ -3605,12 +4077,12 @@ export default function ThreeMansionEngine() {
       );
       roomGroup.add(grandDustPoints);
 
-      scene.add(roomGroup);
+      hallwayGroup.add(roomGroup);
       return roomGroup;
     };
 
     // -------------------------------------------------------------------------
-    // CHAMBER II: VERSACE SUITE (Bespoke 3D Master Bed, Nightstands, Lighting)
+    // CHAMBER II: VERSACE SUITE (Curated Master Suite Architectural Gallery)
     // -------------------------------------------------------------------------
     const buildVersaceSuiteChamber = () => {
       const { roomGroup, roomW, roomD, roomH, wallMat } = buildRoomShell(
@@ -3618,7 +4090,7 @@ export default function ThreeMansionEngine() {
         -45,
         1,
         0xe2d6c4,
-        grandFloorMat // Warm polished Italian honey marble floor
+        grandFloorMat // Continuous Italian Nero Marquina black marble floor
       );
 
       const backX = roomW / 2; // +8.0
@@ -3629,536 +4101,55 @@ export default function ThreeMansionEngine() {
       oakBackWall.rotation.y = -Math.PI / 2;
       roomGroup.add(oakBackWall);
 
-      // Artwork 1 (Back Wall Hero): The Fluted White Oak Retreat (above headboard at Y = 4.30)
-      const ch2ArtWoodBed = createFramedArtMesh(texCh2WoodBed, 6.2, 3.2, 0.08, true);
-      ch2ArtWoodBed.position.set(backX - 0.08, 4.30, 0);
-      ch2ArtWoodBed.rotation.y = -Math.PI / 2;
-      roomGroup.add(ch2ArtWoodBed);
+      // Artwork 1 (Back Wall Hero): Monumental 12.2m x 5.8m 4K Master Retreat Centerpiece
+      const ch2HeroArt = createFramedArtMesh(texCh2WoodBed, 12.2, 5.8, 0.11, true, 0.14);
+      ch2HeroArt.group.position.set(backX - 0.08, 3.40, 0);
+      ch2HeroArt.group.rotation.y = -Math.PI / 2;
+      roomGroup.add(ch2HeroArt.group);
+      heroArtRefs.current["versace"] = ch2HeroArt;
 
-      // Side Wall 1 (Z = -roomD/2): Oak paneling exhibiting 2 fine art master suite works
+      // Side Wall 1 (Z = -roomD/2): Oak paneling exhibiting 2 monumental fine art master suite works
       const sideWall1 = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), flutedOakMat);
       sideWall1.position.set(0, roomH / 2, -roomD / 2);
 
-      // Artwork 2 (Side Wall 1 Left): The Horizon Master Bed Suite
-      const ch2ArtBed1 = createFramedArtMesh(texCh2Bed1, 4.2, 2.8, 0.08, true);
-      ch2ArtBed1.position.set(-2.8, roomH / 2, -roomD / 2 + 0.08);
+      // Artwork 2 (Side Wall 1 Left): The Horizon Master Bed Suite (Monumental 5.8m x 3.8m)
+      const ch2ArtBed1 = createFramedArtMesh(texCh2Bed1, 5.8, 3.8, 0.09, true);
+      ch2ArtBed1.group.position.set(-3.5, 3.60, -roomD / 2 + 0.08);
 
-      // Artwork 3 (Side Wall 1 Right): The Haute Couture Vanity Mirror (Vertical Format)
-      const ch2ArtVanity = createFramedArtMesh(texCh2Vanity, 2.6, 3.4, 0.08, true);
-      ch2ArtVanity.position.set(2.8, roomH / 2, -roomD / 2 + 0.08);
-      roomGroup.add(sideWall1, ch2ArtBed1, ch2ArtVanity);
+      // Artwork 3 (Side Wall 1 Right): The Haute Couture Vanity Mirror (Monumental 5.8m x 3.8m)
+      const ch2ArtVanity = createFramedArtMesh(texCh2Vanity, 5.8, 3.8, 0.09, true);
+      ch2ArtVanity.group.position.set(3.5, 3.60, -roomD / 2 + 0.08);
+      roomGroup.add(sideWall1, ch2ArtBed1.group, ch2ArtVanity.group);
 
-      // Side Wall 2 (Z = +roomD/2): Limestone wall exhibiting 2 fine art master suite works
+      // Side Wall 2 (Z = +roomD/2): Limestone wall exhibiting 2 monumental fine art master suite works
       const sideWall2 = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), wallMat);
       sideWall2.position.set(0, roomH / 2, roomD / 2);
       sideWall2.rotation.y = Math.PI;
 
-      // Artwork 4 (Side Wall 2 Left): The Emerald Accent Master Suite
-      const ch2ArtEmerald = createFramedArtMesh(texCh2Emerald, 4.2, 2.8, 0.08, true);
-      ch2ArtEmerald.position.set(-2.8, roomH / 2, roomD / 2 - 0.08);
-      ch2ArtEmerald.rotation.y = Math.PI;
-
-      // Artwork 5 (Side Wall 2 Right): The Linear Headboard Atelier
-      const ch2ArtLinear = createFramedArtMesh(texCh2Linear, 4.2, 2.8, 0.08, true);
-      ch2ArtLinear.position.set(2.8, roomH / 2, roomD / 2 - 0.08);
-      ch2ArtLinear.rotation.y = Math.PI;
-      roomGroup.add(sideWall2, ch2ArtEmerald, ch2ArtLinear);
-
-      // --- BESPOKE 3D MASTER BEDROOM FURNITURE ENSEMBLE ---
-
-      // 1. Silk & Wool Suite Area Rug (5.8m along Z, 4.8m along X)
-      const rugGroup = new THREE.Group();
-      rugGroup.position.set(5.1, 0, 0);
-
-      // Grounding Ambient Contact Shadow under Rug
-      const rugShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(5.2, 6.2),
-        new THREE.MeshBasicMaterial({
-          color: 0x120c08,
-          transparent: true,
-          opacity: 0.45,
-          depthWrite: false,
-        })
-      );
-      rugShadow.rotation.x = -Math.PI / 2;
-      rugShadow.position.y = 0.002;
-
-      // Primary Woven Silk-Wool Rug Plane (textured with versace_suite_rug.jpg)
-      const suiteRug = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 5.8), versaceRugMat);
-      suiteRug.rotation.x = -Math.PI / 2;
-      suiteRug.position.y = 0.008;
-
-      // Raised 3D Border Pile Lip (Eliminates flat paper decal look)
-      const rugBorderLipMat = new THREE.MeshStandardMaterial({
-        color: 0x221e1c, // dark bronze/charcoal border lip
-        roughness: 0.85,
-        fog: false,
-      });
-      const lipFront = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.016, 5.84), rugBorderLipMat);
-      lipFront.position.set(-2.41, 0.012, 0);
-      const lipBack = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.016, 5.84), rugBorderLipMat);
-      lipBack.position.set(2.41, 0.012, 0);
-      const lipLeft = new THREE.Mesh(new THREE.BoxGeometry(4.84, 0.016, 0.06), rugBorderLipMat);
-      lipLeft.position.set(0, 0.012, -2.91);
-      const lipRight = new THREE.Mesh(new THREE.BoxGeometry(4.84, 0.016, 0.06), rugBorderLipMat);
-      lipRight.position.set(0, 0.012, 2.91);
-
-      rugGroup.add(rugShadow, suiteRug, lipFront, lipBack, lipLeft, lipRight);
-      roomGroup.add(rugGroup);
-
-      // 2. The 3D Luxury Versace Master Bed Ensemble
-      const bedGroup = new THREE.Group();
-      bedGroup.position.set(4.8, 0, 0);
-
-      // Deep Grounding Contact Shadow under Bed Frame
-      const bedShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(2.7, 2.8),
-        new THREE.MeshBasicMaterial({
-          color: 0x100a06,
-          transparent: true,
-          opacity: 0.58,
-          depthWrite: false,
-        })
-      );
-      bedShadow.rotation.x = -Math.PI / 2;
-      bedShadow.position.set(0.05, 0.009, 0);
-      bedGroup.add(bedShadow);
-
-      // --- A. 8-PANEL CHANNEL-TUFTED CORDOVAN LEATHER HEADBOARD ---
-      const headboardGroup = new THREE.Group();
-      headboardGroup.position.set(2.35, 0, 0); // local X = 4.8 + 2.35 = 7.15 (close to back oak wall at 8.0)
-
-      const numChannels = 8;
-      const totalHeadboardW = 3.80; // spans Z = -1.90 to +1.90
-      const channelW = totalHeadboardW / numChannels; // 0.475m per channel
-      const headboardH = 2.05; // from Y = 0.10 to 2.15
-
-      // Structural Backing Board
-      const hbBacking = new THREE.Mesh(
-        new THREE.BoxGeometry(0.10, headboardH, totalHeadboardW),
-        smokedOakMat
-      );
-      hbBacking.position.set(0.05, headboardH / 2 + 0.08, 0);
-      headboardGroup.add(hbBacking);
-
-      // 8 Sculpted Vertical Channel Cushions with Convex Crown Curves & Seam Piping
-      for (let c = 0; c < numChannels; c++) {
-        const cz = -totalHeadboardW / 2 + channelW / 2 + c * channelW;
-
-        // Main Channel Cushion Body
-        const channelBody = new THREE.Mesh(
-          new THREE.BoxGeometry(0.12, headboardH - 0.02, channelW - 0.015),
-          cordovanLeatherMat
-        );
-        channelBody.position.set(-0.02, headboardH / 2 + 0.08, cz);
-
-        // Convex Front Pad catching soft light highlights
-        const channelCrown = new THREE.Mesh(
-          new THREE.BoxGeometry(0.04, headboardH - 0.06, channelW - 0.035),
-          cordovanLeatherMat
-        );
-        channelCrown.position.set(-0.08, headboardH / 2 + 0.08, cz);
-
-        headboardGroup.add(channelBody, channelCrown);
-
-        // Vertical Dark Bronze Inset Reveal Bead between adjacent panels
-        if (c < numChannels - 1) {
-          const seamBead = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.008, 0.008, headboardH, 8),
-            darkBronzeMat
-          );
-          seamBead.position.set(-0.08, headboardH / 2 + 0.08, cz + channelW / 2);
-          headboardGroup.add(seamBead);
-        }
-      }
-
-      // Brushed Antique Gold Top Cap Crown Rail across full headboard width
-      const hbTopCap = new THREE.Mesh(
-        new THREE.BoxGeometry(0.18, 0.045, totalHeadboardW + 0.04),
-        antiqueGoldMat
-      );
-      hbTopCap.position.set(-0.02, headboardH + 0.09, 0);
-
-      // Lateral Brushed Gold End Caps
-      const hbLeftCap = new THREE.Mesh(new THREE.BoxGeometry(0.18, headboardH + 0.04, 0.025), antiqueGoldMat);
-      hbLeftCap.position.set(-0.02, headboardH / 2 + 0.08, -totalHeadboardW / 2 - 0.01);
-      const hbRightCap = new THREE.Mesh(new THREE.BoxGeometry(0.18, headboardH + 0.04, 0.025), antiqueGoldMat);
-      hbRightCap.position.set(-0.02, headboardH / 2 + 0.08, totalHeadboardW / 2 + 0.01);
-      headboardGroup.add(hbTopCap, hbLeftCap, hbRightCap);
-
-      // Concealed Warm LED Halo Uplight Channel behind top of headboard
-      const haloStrip = new THREE.Mesh(
-        new THREE.BoxGeometry(0.04, 0.015, totalHeadboardW - 0.2),
-        new THREE.MeshBasicMaterial({ color: 0xffe2a4 })
-      );
-      haloStrip.position.set(0.08, headboardH + 0.06, 0);
-      headboardGroup.add(haloStrip);
-
-
-
-      bedGroup.add(headboardGroup);
-
-      // --- B. LOW FLOATING PLATFORM BED FRAME ---
-      // Recessed Inset Plinth Base (in dark bronze with deep floating shadow reveal)
-      const plinthBase = new THREE.Mesh(
-        new THREE.BoxGeometry(2.35, 0.12, 2.30),
-        darkBronzeMat
-      );
-      plinthBase.position.set(0.08, 0.06, 0);
-      bedGroup.add(plinthBase);
-
-      // Primary Outer Upholstered Platform Frame Deck in Cordovan Leather
-      const platformDeck = new THREE.Mesh(
-        new THREE.BoxGeometry(2.55, 0.26, 2.48),
-        cordovanLeatherMat
-      );
-      platformDeck.position.set(0.05, 0.25, 0);
-
-      // Antique Gold Corner Trim Brackets on Platform Foot
-      for (const cz of [-1.24, 1.24]) {
-        const cornerTrim = new THREE.Mesh(
-          new THREE.BoxGeometry(0.08, 0.27, 0.08),
-          antiqueGoldMat
-        );
-        cornerTrim.position.set(-1.21, 0.25, cz);
-        bedGroup.add(cornerTrim);
-      }
-      bedGroup.add(platformDeck);
-
-      // --- C. LUXURY MATTRESS ---
-      const mattress = new THREE.Mesh(
-        new THREE.BoxGeometry(2.36, 0.28, 2.32),
-        whiteLinenMat
-      );
-      mattress.position.set(0.12, 0.48, 0);
-
-      // Tailored Piping Bead along perimeter of mattress
-      const matPipingFront = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 2.32, 8), whiteLinenMat);
-      matPipingFront.rotation.x = Math.PI / 2;
-      matPipingFront.position.set(-1.05, 0.62, 0);
-      bedGroup.add(mattress, matPipingFront);
-
-      // --- D. VOLUMETRIC CHAMPAGNE SILK DUVET & LINEN TURN-DOWN ---
-      // Main Duvet Body with soft convex crown
-      const duvetBody = new THREE.Mesh(
-        new THREE.BoxGeometry(1.75, 0.16, 2.34),
-        champagneSilkMat
-      );
-      duvetBody.position.set(-0.20, 0.61, 0);
-
-      // Pillowed Crown Dome (convex highlight catcher)
-      const duvetCrown = new THREE.Mesh(
-        new THREE.BoxGeometry(1.68, 0.05, 2.26),
-        champagneSilkMat
-      );
-      duvetCrown.position.set(-0.20, 0.69, 0);
-
-      // Waterfall Side Drops cascading over the mattress edges
-      const dropLeft = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.26, 0.04), champagneSilkMat);
-      dropLeft.position.set(-0.20, 0.50, -1.18);
-      const dropRight = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.26, 0.04), champagneSilkMat);
-      dropRight.position.set(-0.20, 0.50, 1.18);
-
-      // Foot Drop cascading over the foot of the bed
-      const dropFoot = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.28, 2.34), champagneSilkMat);
-      dropFoot.position.set(-1.08, 0.49, 0);
-
-      // Crisp Egyptian White Linen Sheet Turn-Down Fold (folded back 48cm)
-      const turnDownFold = new THREE.Mesh(
-        new THREE.BoxGeometry(0.48, 0.12, 2.33),
-        whiteLinenMat
-      );
-      turnDownFold.position.set(0.85, 0.63, 0);
-
-      const turnDownCuff = new THREE.Mesh(
-        new THREE.BoxGeometry(0.12, 0.045, 2.34),
-        whiteLinenMat
-      );
-      turnDownCuff.position.set(0.62, 0.70, 0);
-
-      bedGroup.add(duvetBody, duvetCrown, dropLeft, dropRight, dropFoot, turnDownFold, turnDownCuff);
-
-      // --- E. VERSACE MIDNIGHT NAVY & GOLD SILK BED RUNNER ---
-      // Positioned at foot of bed, resting atop duvet and cascading down both sides
-      const runnerMain = new THREE.Mesh(
-        new THREE.BoxGeometry(0.86, 0.04, 2.36),
-        versaceRunnerMat
-      );
-      runnerMain.position.set(-0.62, 0.74, 0);
-
-      // Left Waterfall Drape
-      const runnerDropLeft = new THREE.Mesh(
-        new THREE.BoxGeometry(0.86, 0.38, 0.04),
-        versaceRunnerMat
-      );
-      runnerDropLeft.position.set(-0.62, 0.54, -1.20);
-
-      // Right Waterfall Drape
-      const runnerDropRight = new THREE.Mesh(
-        new THREE.BoxGeometry(0.86, 0.38, 0.04),
-        versaceRunnerMat
-      );
-      runnerDropRight.position.set(-0.62, 0.54, 1.20);
-
-      // Raised Antique Gold Seam Welt Trims along runner borders
-      const runnerGoldTrim1 = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.042, 2.37), antiqueGoldMat);
-      runnerGoldTrim1.position.set(-0.62 + 0.42, 0.742, 0);
-      const runnerGoldTrim2 = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.042, 2.37), antiqueGoldMat);
-      runnerGoldTrim2.position.set(-0.62 - 0.42, 0.742, 0);
-
-      bedGroup.add(runnerMain, runnerDropLeft, runnerDropRight, runnerGoldTrim1, runnerGoldTrim2);
-
-      // --- F. 6-PIECE MASTER PILLOW LANDSCAPE ---
-      // Row 1 (Back): Twin Ivory Linen Euro Shams propped upright against headboard
-      for (const [sz, rz] of [[-0.62, -0.20], [0.62, -0.20]]) {
-        const euroSham = new THREE.Group();
-        euroSham.position.set(1.92, 0.98, sz);
-        euroSham.rotation.z = rz;
-
-        const shamBody = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.56, 0.84), whiteLinenMat);
-        const shamFlange = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.64, 0.92), whiteLinenMat);
-        euroSham.add(shamBody, shamFlange);
-        bedGroup.add(euroSham);
-      }
-
-      // Row 2 (Middle): Twin King Sleeping Pillows in Champagne Silk with Natural Asymmetric Tilts
-      const pillowLeft = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.18, 0.78), champagneSilkMat);
-      pillowLeft.position.set(1.45, 0.74, -0.60);
-      pillowLeft.rotation.set(0.04, 0.06, -0.28);
-
-      const pillowRight = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.18, 0.78), champagneSilkMat);
-      pillowRight.position.set(1.45, 0.74, 0.60);
-      pillowRight.rotation.set(-0.03, -0.05, -0.28);
-
-      bedGroup.add(pillowLeft, pillowRight);
-
-      // Row 3 (Front): Designer Curated Accent Cushions
-      // Left: Peacock Emerald Velvet Cushion with Karate-Chop Crease
-      const emeraldCushion = new THREE.Mesh(
-        new THREE.BoxGeometry(0.20, 0.44, 0.44),
-        emeraldVelvetMat
-      );
-      emeraldCushion.position.set(1.08, 0.84, -0.52);
-      emeraldCushion.rotation.set(0.06, 0.22, -0.18);
-
-      // Right: Versace Midnight Navy Silk Cushion with Satin Gold Piping
-      const navyCushion = new THREE.Mesh(
-        new THREE.BoxGeometry(0.18, 0.44, 0.44),
-        versaceRunnerMat
-      );
-      navyCushion.position.set(1.08, 0.84, 0.52);
-      navyCushion.rotation.set(-0.05, -0.18, -0.16);
-
-      const navyPiping = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.44, 8), antiqueGoldMat);
-      navyPiping.rotation.x = Math.PI / 2;
-      navyPiping.position.set(0, 0.22, 0);
-      navyCushion.add(navyPiping);
-
-      // Center: Bouclé & Gold Strip Lumbar Cushion
-      const lumbarCushion = new THREE.Mesh(
-        new THREE.BoxGeometry(0.16, 0.24, 0.52),
-        boucleMat
-      );
-      lumbarCushion.position.set(0.92, 0.76, 0);
-      lumbarCushion.rotation.z = -0.14;
-
-      const goldLumbarBand = new THREE.Mesh(
-        new THREE.BoxGeometry(0.165, 0.245, 0.10),
-        antiqueGoldMat
-      );
-      lumbarCushion.add(goldLumbarBand);
-
-      bedGroup.add(emeraldCushion, navyCushion, lumbarCushion);
-      roomGroup.add(bedGroup);
-
-      // 3. TWIN DESIGNER BEDSIDE NIGHTSTANDS
-
-      // --- RIGHT NIGHTSTAND: FLOATING 2-DRAWER SMOKED OAK & NERO MARQUINA CREDENZA ---
-      // (Directly underneath the Dual-Drop Pendant & Spotlight)
-      const rightStandGroup = new THREE.Group();
-      rightStandGroup.position.set(6.4, 0, 2.35);
-
-      // Grounding Contact Shadow
-      const rightStandShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.72, 1.05),
-        new THREE.MeshBasicMaterial({ color: 0x120c08, transparent: true, opacity: 0.52, depthWrite: false })
-      );
-      rightStandShadow.rotation.x = -Math.PI / 2;
-      rightStandShadow.position.y = 0.01;
-      rightStandGroup.add(rightStandShadow);
-
-      // Floating Dark Bronze Plinth Base
-      const rightPlinth = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.10, 0.78), darkBronzeMat);
-      rightPlinth.position.set(0, 0.05, 0);
-
-      // Smoked Oak 2-Drawer Body
-      const rightCabinet = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.46, 0.86), smokedOakMat);
-      rightCabinet.position.set(0, 0.33, 0);
-
-      // Drawer Face Divides & Recessed Brushed Antique Gold Finger Pulls
-      for (const dy of [0.22, 0.44]) {
-        const drawerPull = new THREE.Mesh(
-          new THREE.BoxGeometry(0.03, 0.016, 0.16),
-          antiqueGoldMat
-        );
-        drawerPull.position.set(-0.28, dy, 0);
-        rightStandGroup.add(drawerPull);
-      }
-
-      // Honed Nero Marquina Marble Slab Top with Polished Bullnose Rim
-      const rightMarbleTop = new THREE.Mesh(
-        new THREE.BoxGeometry(0.57, 0.035, 0.89),
-        neroMarquinaMat
-      );
-      rightMarbleTop.position.set(0, 0.58, 0);
-      rightStandGroup.add(rightPlinth, rightCabinet, rightMarbleTop);
-
-      // Editorial Object A: Modern Fluted Bronze Table Lamp with Frosted Glass Drum
-      const lampGroup = new THREE.Group();
-      lampGroup.position.set(0.06, 0.60, -0.16);
-
-      const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.05, 24), darkBronzeMat);
-      lampBase.position.y = 0.025;
-      const lampStem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.24, 16), antiqueGoldMat);
-      lampStem.position.y = 0.17;
-      const lampShade = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.18, 24), frostedGlassMat);
-      lampShade.position.y = 0.34;
-
-      // Warm Internal Lamp Light
-      const lampBulb = new THREE.Mesh(
-        new THREE.SphereGeometry(0.03, 16, 16),
-        new THREE.MeshBasicMaterial({ color: 0xffe6b0 })
-      );
-      lampBulb.position.y = 0.34;
-
-      const lampPoint = new THREE.PointLight(0xffe2a4, 1.6, 3.5, 1.8);
-      lampPoint.position.y = 0.34;
-
-      lampGroup.add(lampBase, lampStem, lampShade, lampBulb, lampPoint);
-      rightStandGroup.add(lampGroup);
-
-      // Editorial Object B: Smoked Crystal Bedside Water Carafe & Inverted Tumbler Glass
-      const carafeGroup = new THREE.Group();
-      carafeGroup.position.set(-0.08, 0.60, 0.22);
-
-      const carafeBody = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.16, 20), smokedCrystalMat);
-      carafeBody.position.y = 0.08;
-      const carafeNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.038, 0.06, 20), smokedCrystalMat);
-      carafeNeck.position.y = 0.19;
-      const tumblerGlass = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.03, 0.08, 20), smokedCrystalMat);
-      tumblerGlass.position.y = 0.24;
-
-      carafeGroup.add(carafeBody, carafeNeck, tumblerGlass);
-      rightStandGroup.add(carafeGroup);
-
-      // Editorial Object C: Machined Brass Catchall Tray
-      const tray = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.015, 24), antiqueGoldMat);
-      tray.position.set(0.12, 0.605, 0.20);
-      rightStandGroup.add(tray);
-
-      roomGroup.add(rightStandGroup);
-
-      // --- LEFT NIGHTSTAND: FLUTED CALACATTA MARBLE & BRUSHED GOLD PEDESTAL TABLE ---
-      const leftStandGroup = new THREE.Group();
-      leftStandGroup.position.set(6.4, 0, -2.35);
-
-      // Grounding Contact Shadow
-      const leftStandShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.80, 0.80),
-        new THREE.MeshBasicMaterial({ color: 0x120c08, transparent: true, opacity: 0.50, depthWrite: false })
-      );
-      leftStandShadow.rotation.x = -Math.PI / 2;
-      leftStandShadow.position.y = 0.01;
-      leftStandGroup.add(leftStandShadow);
-
-      // Fluted Calacatta Marble Column Pedestal Base
-      const marbleColumn = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.14, 0.16, 0.54, 32),
-        calacattaConsoleMat
-      );
-      marbleColumn.position.y = 0.27;
-
-      // Brushed Antique Gold Pedestal Top Disc with Raised Lip
-      const goldDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.035, 32), antiqueGoldMat);
-      goldDisc.position.y = 0.56;
-
-      const goldDiscLip = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.012, 12, 32), antiqueGoldMat);
-      goldDiscLip.rotation.x = Math.PI / 2;
-      goldDiscLip.position.y = 0.575;
-
-      leftStandGroup.add(marbleColumn, goldDisc, goldDiscLip);
-
-      // Editorial Object D: Stack of 2 Hardcover Fashion Monographs
-      const book1 = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.035, 0.30), bookCharcoalMat);
-      book1.position.set(0, 0.595, 0.02);
-      const book2 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.030, 0.28), bookTerracottaMat);
-      book2.position.set(0.01, 0.628, 0.02);
-      book2.rotation.y = 0.18; // casual natural angle
-
-      // Editorial Object E: Amber Glass Candle Dish
-      const candleDish = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.045, 0.06, 20), amberGlassMat);
-      candleDish.position.set(-0.12, 0.61, -0.10);
-
-      leftStandGroup.add(book1, book2, candleDish);
-      roomGroup.add(leftStandGroup);
-
-      // 4. DUAL-DROP MINIMALIST PENDANT LUMINAIRE (Over Right Nightstand)
-      const pGroup = new THREE.Group();
-      pGroup.position.set(6.4, roomH, 2.35);
-      versacePendantGroup = pGroup;
-
-      const canopy = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.03, 20), darkBronzeMat);
-      pGroup.add(canopy);
-
-      // Staggered Braided Cords with Brass Socket Sleeves and Frosted Opal Glass Globes
-      const drops = [
-        { x: -0.09, z: 0, cordH: 4.3, dropY: -4.3, r: 0.14 },
-        { x: 0.09, z: 0.05, cordH: 4.7, dropY: -4.7, r: 0.12 },
-      ];
-
-      drops.forEach((d) => {
-        // Cord
-        const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, d.cordH, 12), darkBronzeMat);
-        cord.position.set(d.x, -d.cordH / 2, d.z);
-
-        // Brass Socket Sleeve
-        const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.08, 16), antiqueGoldMat);
-        socket.position.set(d.x, d.dropY + 0.04, d.z);
-
-        // Frosted Opal Globe
-        const globe = new THREE.Mesh(new THREE.SphereGeometry(d.r, 24, 24), frostedGlassMat);
-        globe.position.set(d.x, d.dropY - d.r + 0.02, d.z);
-
-        // Emissive Core Inside Globe
-        const core = new THREE.Mesh(
-          new THREE.SphereGeometry(d.r * 0.45, 16, 16),
-          new THREE.MeshBasicMaterial({ color: 0xffeec2 })
-        );
-        core.position.set(d.x, d.dropY - d.r + 0.02, d.z);
-
-        pGroup.add(cord, socket, globe, core);
-      });
-
-      // Dedicated Warm Spotlight Pooling onto the Right Nightstand
-      const pendantSpot = new THREE.SpotLight(0xffe8b4, 3.2, 12, Math.PI / 4, 0.48);
-      pendantSpot.position.set(0, -4.5, 0);
-      pendantSpot.target = rightMarbleTop;
-      pGroup.add(pendantSpot);
-      roomGroup.add(pGroup);
-
-      // Bed Accent Downlight: Warm gentle wash illuminating the duvet, runner & pillows
-      const bedAccentSpot = new THREE.SpotLight(0xffecd0, 0.75, 14, Math.PI / 3.5, 0.5);
-      bedAccentSpot.position.set(4.8, roomH - 0.2, 0);
-      bedAccentSpot.target = duvetBody;
-      roomGroup.add(bedAccentSpot);
-
-      // 5. Micro-Dust Motes Floating in Spotlight Cone
+      // Artwork 4 (Side Wall 2 Left): The Emerald Accent Master Suite (Monumental 5.8m x 3.8m)
+      const ch2ArtEmerald = createFramedArtMesh(texCh2Emerald, 5.8, 3.8, 0.09, true);
+      ch2ArtEmerald.group.position.set(-3.5, 3.60, roomD / 2 - 0.08);
+      ch2ArtEmerald.group.rotation.y = Math.PI;
+
+      // Artwork 5 (Side Wall 2 Right): The Linear Headboard Atelier (Monumental 5.8m x 3.8m)
+      const ch2ArtLinear = createFramedArtMesh(texCh2Linear, 5.8, 3.8, 0.09, true);
+      ch2ArtLinear.group.position.set(3.5, 3.60, roomD / 2 - 0.08);
+      ch2ArtLinear.group.rotation.y = Math.PI;
+      roomGroup.add(sideWall2, ch2ArtEmerald.group, ch2ArtLinear.group);
+
+      // Warm directional wall illumination
+      const suiteSpot = new THREE.SpotLight(0xffecd0, 1.8, 16, Math.PI / 3, 0.45);
+      suiteSpot.position.set(2.0, roomH - 0.4, 0);
+      suiteSpot.target = ch2HeroArt.group;
+      roomGroup.add(suiteSpot);
+
+      // Micro-Dust Motes Floating across Open Gallery Space
       const vDustGeo = new THREE.BufferGeometry();
       const vDustPos = new Float32Array(versaceDustCount * 3);
       for (let i = 0; i < versaceDustCount; i++) {
-        vDustPos[i * 3 + 0] = 6.4 + (Math.random() - 0.5) * 1.8;
-        vDustPos[i * 3 + 1] = 0.8 + Math.random() * 3.8;
-        vDustPos[i * 3 + 2] = 2.35 + (Math.random() - 0.5) * 1.8;
+        vDustPos[i * 3 + 0] = 3.5 + Math.random() * 7.0;
+        vDustPos[i * 3 + 1] = 0.6 + Math.random() * 4.5;
+        vDustPos[i * 3 + 2] = -4.0 + Math.random() * 8.0;
       }
       vDustGeo.setAttribute("position", new THREE.BufferAttribute(vDustPos, 3));
       versaceDustPoints = new THREE.Points(
@@ -4173,7 +4164,7 @@ export default function ThreeMansionEngine() {
       );
       roomGroup.add(versaceDustPoints);
 
-      scene.add(roomGroup);
+      hallwayGroup.add(roomGroup);
       return roomGroup;
     };
 
@@ -4186,476 +4177,133 @@ export default function ThreeMansionEngine() {
         -70,
         -1,
         0xf4ece2,
-        sanctumFloorMarbleMat // Polished Italian Calacatta marble floor with fog: false
+        sanctumFloorMarbleMat // Continuous Polished Italian Calacatta marble floor with fog: false
       );
+      wallMat.fog = false;
 
-      // Intimate Pooja Room Sanctuary Alcove:
-      // Depth extends from entrance at X = +5.20 to back altar wall at X = -2.80
-      // Width extends from right wall Z = -2.65 to left Gayatri wall Z = +2.65
-      const backX = -2.80;
-      const alcoveHalfW = 2.65;
-      const alcoveDepth = 5.20 - backX; // 8.0m
+      const backX = -(roomW / 2); // -8.0m
 
-      // 1. CEILING: Fluted dark teakwood acoustic slats with architectural track spotlights
-      const teakMat = new THREE.MeshStandardMaterial({
-        color: 0x2c1b12,
-        roughness: 0.50,
-        metalness: 0.04,
-        fog: false,
+      // 1. BACK FEATURE WALL: Monumental double-height mineral acoustic plaster backdrop
+      const backWall = new THREE.Mesh(
+        new THREE.PlaneGeometry(roomD, roomH),
+        sanctumPlasterMat
+      );
+      backWall.position.set(backX + 0.04, roomH / 2, 0);
+      backWall.rotation.y = Math.PI / 2;
+      roomGroup.add(backWall);
+
+      // Artwork 1 (Back Wall Hero): Monumental 12.2m x 5.8m 4K Sacred Sanctum Centerpiece
+      // Authentic Gopal Lahoti Mandir Altar with backlit Tirupati Venkateswara halo & Sanskrit Gayatri Mantra
+      const ch3HeroArt = createFramedArtMesh(texCh3Classic, 12.2, 5.8, 0.11, true, 0.14);
+      ch3HeroArt.group.position.set(backX + 0.10, 3.40, 0);
+      ch3HeroArt.group.rotation.y = Math.PI / 2;
+      roomGroup.add(ch3HeroArt.group);
+      heroArtRefs.current["sacred"] = ch3HeroArt;
+
+      // 2. RIGHT FEATURE WALL (Z = -roomD/2 = -8.0m):
+      // NO MORE BLACK WALL! Replaced with full monumental gallery wall exhibiting 2 framed 4K Mandir artworks
+      const sideWall1 = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), sanctumPlasterMat);
+      sideWall1.position.set(0, roomH / 2, -roomD / 2);
+
+      // Artwork 2 (Side Wall 1 Left): Handcrafted Wooden Temple Sanctuary (Monumental 5.8m x 3.8m)
+      const ch3ArtRight1 = createFramedArtMesh(texSacredDetail, 5.8, 3.8, 0.09, true);
+      ch3ArtRight1.group.position.set(-3.5, 3.60, -roomD / 2 + 0.08);
+
+      // Artwork 3 (Side Wall 1 Right): Sacred Altar & Temple Bells (Monumental 5.8m x 3.8m)
+      const ch3ArtRight2 = createFramedArtMesh(texCh3Stone, 5.8, 3.8, 0.09, true);
+      ch3ArtRight2.group.position.set(3.5, 3.60, -roomD / 2 + 0.08);
+      roomGroup.add(sideWall1, ch3ArtRight1.group, ch3ArtRight2.group);
+
+      // 3. LEFT FEATURE WALL (Z = +roomD/2 = +8.0m):
+      // Full monumental gallery wall exhibiting 2 framed 4K Mandir artworks
+      const sideWall2 = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), sanctumPlasterMat);
+      sideWall2.position.set(0, roomH / 2, roomD / 2);
+      sideWall2.rotation.y = Math.PI;
+
+      // Artwork 4 (Side Wall 2 Left): Intricate Teakwood Temple Jali (Monumental 5.8m x 3.8m)
+      const ch3ArtLeft1 = createFramedArtMesh(texSacredLeft, 5.8, 3.8, 0.09, true);
+      ch3ArtLeft1.group.position.set(-3.5, 3.60, roomD / 2 - 0.08);
+      ch3ArtLeft1.group.rotation.y = Math.PI;
+
+      // Artwork 5 (Side Wall 2 Right): Heritage Teakwood Mandir (Monumental 5.8m x 3.8m)
+      const ch3ArtLeft2 = createFramedArtMesh(texCh3Foyer, 5.8, 3.8, 0.09, true);
+      ch3ArtLeft2.group.position.set(3.5, 3.60, roomD / 2 - 0.08);
+      ch3ArtLeft2.group.rotation.y = Math.PI;
+      roomGroup.add(sideWall2, ch3ArtLeft1.group, ch3ArtLeft2.group);
+
+      // 4. ARCHITECTURAL LIGHTING: Warm Golden Directional Key Lights (2700K Amber Sanctuary Illumination)
+      const sanctumSpot = new THREE.SpotLight(0xffeed6, 1.8, 16, Math.PI / 3, 0.45);
+      sanctumSpot.position.set(-2.0, roomH - 0.4, 0);
+      sanctumSpot.target = ch3HeroArt.group;
+      roomGroup.add(sanctumSpot);
+
+      // Ceiling Coffers Downlights
+      const sanctumDownlightMat = new THREE.MeshStandardMaterial({
+        color: 0xfff0d6,
+        emissive: 0xffd88e,
+        emissiveIntensity: 1.8,
+        roughness: 0.2,
       });
-
-      // Ceiling slats spanning across Z from -alcoveHalfW to +alcoveHalfW
-      for (let sz = -alcoveHalfW + 0.15; sz <= alcoveHalfW - 0.15; sz += 0.28) {
-        const slat = new THREE.Mesh(new THREE.BoxGeometry(alcoveDepth + 0.2, 0.08, 0.14), teakMat);
-        slat.position.set((5.20 + backX) / 2, roomH - 0.04, sz);
-        roomGroup.add(slat);
-      }
-
-      // Ceiling Track Spotlight Bar in Dark Bronze
-      const trackBar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 3.8), darkBronzeMat);
-      trackBar.position.set(-1.60, roomH - 0.10, 0);
-      roomGroup.add(trackBar);
-
-      // 3 Directional Track Downlights aiming directly at the Mandir Altar & Idols
-      for (const sz of [-1.10, 0, 1.10]) {
-        const fixture = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.14, 16), darkBronzeMat);
-        fixture.position.set(-1.60, roomH - 0.17, sz);
-        fixture.rotation.z = -0.22;
-
-        const fixtureRim = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.008, 12, 16), antiqueGoldMat);
-        fixtureRim.position.set(-1.60, roomH - 0.24, sz);
-        fixtureRim.rotation.x = Math.PI / 2;
-
-        const fixtureLens = new THREE.Mesh(new THREE.CircleGeometry(0.045, 12), coveLightMat);
-        fixtureLens.position.set(-1.60, roomH - 0.24, sz);
-        fixtureLens.rotation.x = Math.PI / 2;
-        roomGroup.add(fixture, fixtureRim, fixtureLens);
-      }
-
-      // 2. BACK WALL: Fine mineral acoustic plaster in soft travertine tone (matches real photo)
-      const plasterBack = new THREE.Mesh(new THREE.PlaneGeometry(alcoveHalfW * 2 + 0.2, roomH), sanctumPlasterMat);
-      plasterBack.position.set(backX + 0.02, roomH / 2, 0);
-      plasterBack.rotation.y = Math.PI / 2;
-      roomGroup.add(plasterBack);
-
-      // Outer room backdrop plaster wall
-      const outerBackWall = new THREE.Mesh(new THREE.PlaneGeometry(roomD, roomH), sanctumPlasterMat);
-      outerBackWall.position.set(-roomW / 2 + 0.02, roomH / 2, 0);
-      outerBackWall.rotation.y = Math.PI / 2;
-      roomGroup.add(outerBackWall);
-
-      // 3. ILLUMINATED BACKLIT SACRED ONYX HALO DISC (Lord Venkateswara / Tirupati Balaji)
-      const haloGroup = new THREE.Group();
-      haloGroup.position.set(backX + 0.08, 3.45, 0);
-
-      // Main Backlit Onyx Disc with sacred Tirupati Balaji iconography (Faces +X towards viewer)
-      const haloGeo = new THREE.CircleGeometry(1.15, 64);
-      const haloDisc = new THREE.Mesh(haloGeo, sacredHaloMat);
-      haloDisc.position.set(0.015, 0, 0);
-      haloDisc.rotation.y = Math.PI / 2;
-      haloGroup.add(haloDisc);
-
-      // Brushed Antique Gold Outer Framing Bezel Ring
-      const haloBezel = new THREE.Mesh(
-        new THREE.TorusGeometry(1.16, 0.024, 16, 64),
-        antiqueGoldMat
-      );
-      haloBezel.position.set(0.020, 0, 0);
-      haloBezel.rotation.y = Math.PI / 2;
-      haloGroup.add(haloBezel);
-
-      // Inner Satin Gold Fillet Ring
-      const haloInnerRing = new THREE.Mesh(
-        new THREE.TorusGeometry(1.12, 0.008, 12, 64),
-        antiqueGoldMat
-      );
-      haloInnerRing.position.set(0.022, 0, 0);
-      haloInnerRing.rotation.y = Math.PI / 2;
-      haloGroup.add(haloInnerRing);
-
-      // Soft Indirect Corona Backlight behind the halo disc
-      const haloCoronaLight = new THREE.PointLight(0xffdd94, 0.8, 3.8, 1.8);
-      haloCoronaLight.position.set(-0.04, 0, 0);
-      haloGroup.add(haloCoronaLight);
-
-      roomGroup.add(haloGroup);
-
-      // 4. TWIN HANGING TEMPLE BELLS (GHANTI) FLANKING THE HALO
-      // Suspended on slender antique brass chains from the teak slat ceiling
-      for (const bz of [-1.65, 1.65]) {
-        const bellGroup = new THREE.Group();
-        bellGroup.position.set(-2.15, 0, bz);
-
-        // Slender Brass Chain from ceiling (Y = 7.10 down to Y = 2.45)
-        const chainH = roomH - 2.45;
-        const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, chainH), antiqueGoldMat);
-        chain.position.set(0, roomH - chainH / 2, 0);
-
-        // Suspension Loop Ring
-        const loop = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 12, 16), antiqueGoldMat);
-        loop.position.set(0, 2.44, 0);
-
-        // Bell Body with Flared Rim
-        const bellBody = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.13, 0.18, 24), antiqueGoldMat);
-        bellBody.position.set(0, 2.30, 0);
-
-        const bellRim = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.016, 12, 24), antiqueGoldMat);
-        bellRim.position.set(0, 2.21, 0);
-        bellRim.rotation.x = Math.PI / 2;
-
-        // Spherical Brass Clapper
-        const clapper = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 12), antiqueGoldMat);
-        clapper.position.set(0, 2.16, 0);
-
-        bellGroup.add(chain, loop, bellBody, bellRim, clapper);
-        roomGroup.add(bellGroup);
-      }
-
-      // 5. LEFT FEATURE WALL (Z = +alcoveHalfW): LASER-ETCHED GAYATRI MANTRA & OM MANDALA
-      // Exact recreation of Gopal Lahoti's signature Sacred Sanctum feature wall
-      // Placed immediately along the left wall of the intimate pooja chamber
-      const gayatriPanel = new THREE.Mesh(
-        new THREE.PlaneGeometry(alcoveDepth + 0.1, roomH - 0.2),
-        gayatriWallMat
-      );
-      gayatriPanel.position.set((5.20 + backX) / 2, roomH / 2, alcoveHalfW - 0.02);
-      gayatriPanel.rotation.y = Math.PI; // Face inward into sanctuary (-Z)
-      roomGroup.add(gayatriPanel);
-
-      // Dedicated architectural graze wash light highlighting the Sanskrit Devanagari text
-      const mantraWashLight = new THREE.SpotLight(0xfff6e4, 1.8, 10, Math.PI / 3, 0.45);
-      mantraWashLight.position.set((5.20 + backX) / 2, roomH - 0.25, alcoveHalfW - 1.2);
-      mantraWashLight.target = gayatriPanel;
-      roomGroup.add(mantraWashLight);
-
-      // 6. RIGHT FEATURE WALL (Z = -alcoveHalfW): Warm Teak Acoustic Slat & Plaster Wall
-      const rightWall = new THREE.Mesh(
-        new THREE.PlaneGeometry(alcoveDepth + 0.1, roomH - 0.2),
-        teakMat
-      );
-      rightWall.position.set((5.20 + backX) / 2, roomH / 2, -alcoveHalfW + 0.02);
-      roomGroup.add(rightWall);
-
-      // Pair of warm brass architectural sconces on the right wall
-      for (const sx of [0.4, 3.2]) {
-        const sconce = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.36, 0.06), antiqueGoldMat);
-        sconce.position.set(sx, 2.6, -alcoveHalfW + 0.05);
-        roomGroup.add(sconce);
-      }
-
-      // 7. SACRED PRAYER RUG (AASAN) ON FLOOR
-      const prayerRugGroup = new THREE.Group();
-      prayerRugGroup.position.set(-0.65, 0, 0);
-
-      // Grounding Ambient Contact Shadow under Rug
-      const rugShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(2.4, 3.8),
-        new THREE.MeshBasicMaterial({ color: 0x140c06, transparent: true, opacity: 0.52, depthWrite: false })
-      );
-      rugShadow.rotation.x = -Math.PI / 2;
-      rugShadow.position.y = 0.003;
-
-      // Primary Woven Maroon & Gold Silk Rug Plane
-      const prayerRug = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 3.6), sanctumPrayerRugMat);
-      prayerRug.rotation.x = -Math.PI / 2;
-      prayerRug.position.y = 0.008;
-
-      // Raised Border Lip / Pile Thickness Reveal
-      const rugLipMat = new THREE.MeshStandardMaterial({ color: 0x241610, roughness: 0.85, fog: false });
-      const rLipN = new THREE.Mesh(new THREE.BoxGeometry(2.24, 0.015, 0.04), rugLipMat);
-      rLipN.position.set(0, 0.012, 1.81);
-      const rLipS = new THREE.Mesh(new THREE.BoxGeometry(2.24, 0.015, 0.04), rugLipMat);
-      rLipS.position.set(0, 0.012, -1.81);
-      const rLipW = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.015, 3.64), rugLipMat);
-      rLipW.position.set(-1.11, 0.012, 0);
-      const rLipE = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.015, 3.64), rugLipMat);
-      rLipE.position.set(1.11, 0.012, 0);
-
-      prayerRugGroup.add(rugShadow, prayerRug, rLipN, rLipS, rLipW, rLipE);
-      roomGroup.add(prayerRugGroup);
-
-      // 8. REAL 3D MANDIR CONSOLE & ALTAR ENSEMBLE
-      // Centered against the travertine back wall at local X = -2.05
-      const mandirGroup = new THREE.Group();
-      mandirGroup.position.set(-2.05, 0, 0);
-
-      // Deep Grounding Contact Shadow under Mandir Base
-      const mandirShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.05, 3.8),
-        new THREE.MeshBasicMaterial({ color: 0x120a06, transparent: true, opacity: 0.62, depthWrite: false })
-      );
-      mandirShadow.rotation.x = -Math.PI / 2;
-      mandirShadow.position.set(0, 0.004, 0);
-      mandirGroup.add(mandirShadow);
-
-      // 8 Sculpted Dark Bronze / Satin Brass Raised Tapered Feet (0.08m high)
-      for (const fx of [-0.34, 0.34]) {
-        for (const fz of [-1.65, -0.55, 0.55, 1.65]) {
-          const footBase = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.035, 0.08, 16), darkBronzeMat);
-          footBase.position.set(fx, 0.04, fz);
-          const footGlide = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.015, 16), antiqueGoldMat);
-          footGlide.position.set(fx, 0.008, fz);
-          mandirGroup.add(footBase, footGlide);
+      for (const cx of [-4.5, 0, 4.5]) {
+        for (const cz of [-4.5, 0, 4.5]) {
+          const downlight = new THREE.Mesh(new THREE.CircleGeometry(0.12, 16), sanctumDownlightMat);
+          downlight.position.set(cx, roomH - 0.02, cz);
+          downlight.rotation.x = Math.PI / 2;
+          roomGroup.add(downlight);
         }
       }
 
-      // Coral Terracotta Lacquered Console Cabinet Body
-      const consoleBody = new THREE.Mesh(
-        new THREE.BoxGeometry(0.78, 0.98, 3.60),
-        mandirCoralDoorMat
+      // 5. SACRED CEREMONIAL PEDESTAL CONSOLE WITH FLICKERING DIYA & INCENSE
+      const diyaConsole = new THREE.Group();
+      diyaConsole.position.set(-5.5, 0, 0);
+
+      // Statuario Marble Pedestal Base
+      const pedBase = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.38, 0.42, 0.85, 24),
+        sanctumFloorMarbleMat
       );
-      consoleBody.position.set(0, 0.57, 0);
-      mandirGroup.add(consoleBody);
+      pedBase.position.y = 0.425;
 
-      // 4 Capsule-Arch Fluted Doors with Concealed Recessed Gold Pull Handles
-      const doorW = 0.88;
-      const doorH = 0.96;
-      for (let i = 0; i < 4; i++) {
-        const dz = -1.32 + i * 0.88;
-
-        // Fluted door panel textured with capsule arch relief
-        const doorPanel = new THREE.Mesh(
-          new THREE.BoxGeometry(0.04, doorH, doorW - 0.015),
-          mandirCoralDoorMat
-        );
-        doorPanel.position.set(0.41, 0.57, dz);
-
-        // Minimalist Horizontal Recessed Brushed Gold Pull Handle near top
-        const handle = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.02, 0.12), antiqueGoldMat);
-        handle.position.set(0.435, 0.95, dz);
-
-        // Subtle dark shadow line between doors
-        if (i < 3) {
-          const doorGap = new THREE.Mesh(new THREE.BoxGeometry(0.045, doorH, 0.006), darkBronzeMat);
-          doorGap.position.set(0.41, 0.57, dz + doorW / 2);
-          mandirGroup.add(doorGap);
-        }
-
-        mandirGroup.add(doorPanel, handle);
-      }
-
-      // Inset Satin Gold Reveal Bead between Cabinet and Marble Slab
-      const revealBead = new THREE.Mesh(new THREE.BoxGeometry(0.80, 0.018, 3.64), antiqueGoldMat);
-      revealBead.position.set(0, 1.07, 0);
-      mandirGroup.add(revealBead);
-
-      // Polished Pure White Statuario Marble Slab Countertop with Bullnose Rim
-      const marbleTop = new THREE.Mesh(
-        new THREE.BoxGeometry(0.88, 0.06, 3.76),
-        mandirCountertopMat
-      );
-      marbleTop.position.set(0, 1.11, 0);
-      mandirGroup.add(marbleTop);
-
-      // 9. ALTAR CEREMONIAL ARTIFACTS & SACRED OFFERINGS
-
-      // A. Royal Red Silk Ceremonial Aasan Cloth with Gold Border
-      const aasanCloth = new THREE.Mesh(
-        new THREE.BoxGeometry(0.66, 0.012, 2.80),
-        new THREE.MeshStandardMaterial({ color: 0xa81420, roughness: 0.75, fog: false })
-      );
-      aasanCloth.position.set(0.02, 1.145, 0);
-
-      const aasanGoldBorder1 = new THREE.Mesh(new THREE.BoxGeometry(0.67, 0.014, 0.025), antiqueGoldMat);
-      aasanGoldBorder1.position.set(0.02, 1.146, 1.40);
-      const aasanGoldBorder2 = new THREE.Mesh(new THREE.BoxGeometry(0.67, 0.014, 0.025), antiqueGoldMat);
-      aasanGoldBorder2.position.set(0.02, 1.146, -1.40);
-      mandirGroup.add(aasanCloth, aasanGoldBorder1, aasanGoldBorder2);
-
-      // B. Sculpted Brass Lord Ganesha Deity Idol (Center)
-      const idolGroup = new THREE.Group();
-      idolGroup.position.set(0.02, 1.15, 0);
-
-      // Stepped Lotus Pedestal (Padma Peetham)
-      const peethamBase = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.045, 24), antiqueGoldMat);
-      peethamBase.position.y = 0.022;
-      const peethamMid = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.23, 0.035, 24), antiqueGoldMat);
-      peethamMid.position.y = 0.06;
-      const peethamTop = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.19, 0.03, 24), antiqueGoldMat);
-      peethamTop.position.y = 0.09;
-
-      // Sculpted Ganesha Form: Torso, Arms, Head, Curved Trunk, Modak, and Ornate Royal Crown
-      const ganeshaTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 0.22, 20), antiqueGoldMat);
-      ganeshaTorso.position.y = 0.21;
-
-      const ganeshaHead = new THREE.Mesh(new THREE.SphereGeometry(0.11, 20, 20), antiqueGoldMat);
-      ganeshaHead.position.set(0.02, 0.38, 0);
-
-      // Sacred Curved Elephant Trunk (Vakratunda)
-      const trunk1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.12, 16), antiqueGoldMat);
-      trunk1.position.set(0.12, 0.34, -0.02);
-      trunk1.rotation.z = -0.6;
-
-      const trunk2 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.038, 0.10, 16), antiqueGoldMat);
-      trunk2.position.set(0.16, 0.28, -0.06);
-      trunk2.rotation.y = 0.8;
-      trunk2.rotation.z = -0.3;
-
-      // Modak in Trunk / Palm
-      const modak = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.03, 12), antiqueGoldMat);
-      modak.position.set(0.18, 0.29, -0.07);
-
-      // Auspicious Large Ears (Supakarna)
-      const earLeft = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.14, 0.10), antiqueGoldMat);
-      earLeft.position.set(-0.02, 0.40, -0.14);
-      earLeft.rotation.y = -0.3;
-
-      const earRight = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.14, 0.10), antiqueGoldMat);
-      earRight.position.set(-0.02, 0.40, 0.14);
-      earRight.rotation.y = 0.3;
-
-      // 3-Tier Ornate Royal Kireetam Crown
-      const crown1 = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.08, 20), antiqueGoldMat);
-      crown1.position.y = 0.48;
-      const crown2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.085, 0.08, 20), antiqueGoldMat);
-      crown2.position.y = 0.55;
-      const crown3 = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.10, 16), antiqueGoldMat);
-      crown3.position.y = 0.63;
-
-      // Fresh Sacred Marigold Garland encircling Ganesha's base
-      const garlandGroup = new THREE.Group();
-      const numFlowers = 24;
-      for (let m = 0; m < numFlowers; m++) {
-        const ma = (m * 2 * Math.PI) / numFlowers;
-        const mr = 0.24;
-        const flower = new THREE.Mesh(
-          new THREE.SphereGeometry(0.026, 12, 12),
-          m % 2 === 0 ? marigoldOrangeMat : marigoldYellowMat
-        );
-        flower.position.set(Math.cos(ma) * mr, 0.04, Math.sin(ma) * mr);
-        garlandGroup.add(flower);
-      }
-
-      idolGroup.add(
-        peethamBase,
-        peethamMid,
-        peethamTop,
-        ganeshaTorso,
-        ganeshaHead,
-        trunk1,
-        trunk2,
-        modak,
-        earLeft,
-        earRight,
-        crown1,
-        crown2,
-        crown3,
-        garlandGroup
-      );
-      mandirGroup.add(idolGroup);
-
-      // C. Left Flank: Ornate Stepped Gold Framed Deity Murti & Chandan Bowl
-      const leftDeityFrame = new THREE.Mesh(
-        new THREE.BoxGeometry(0.04, 0.42, 0.54),
+      const pedTrim = new THREE.Mesh(
+        new THREE.TorusGeometry(0.42, 0.02, 16, 32),
         antiqueGoldMat
       );
-      leftDeityFrame.position.set(0.02, 1.37, -0.85);
+      pedTrim.position.y = 0.84;
+      pedTrim.rotation.x = Math.PI / 2;
 
-      const leftDeityArt = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.46, 0.34),
-        new THREE.MeshStandardMaterial({ map: texCh3Classic, roughness: 0.25, fog: false })
+      // Ceremonial Brass Diya with Real Flickering Flame
+      const diyaBowl = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.14, 0.06, 0.08, 20),
+        antiqueGoldMat
       );
-      leftDeityArt.rotation.y = Math.PI / 2;
-      leftDeityArt.position.set(0.042, 1.37, -0.85);
-
-      // Small Hand-Hammered Brass Sindoor/Chandan Bowl (Katori)
-      const chandanBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.03, 0.035, 16), antiqueGoldMat);
-      chandanBowl.position.set(0.18, 1.17, -0.85);
-      mandirGroup.add(leftDeityFrame, leftDeityArt, chandanBowl);
-
-      // D. Right Flank: Standing Brass Sri Venkateswara Murti & Sri Yantra Plaque
-      const balajiPedestal = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, 0.44), antiqueGoldMat);
-      balajiPedestal.position.set(0.02, 1.17, 0.85);
-
-      const balajiIdol1 = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.06, 0.32, 16), antiqueGoldMat);
-      balajiIdol1.position.set(0.02, 1.34, 0.75);
-      const balajiCrown1 = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 16), antiqueGoldMat);
-      balajiCrown1.position.set(0.02, 1.54, 0.75);
-
-      const balajiIdol2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.055, 0.30, 16), antiqueGoldMat);
-      balajiIdol2.position.set(0.02, 1.33, 0.95);
-      const balajiCrown2 = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.11, 16), antiqueGoldMat);
-      balajiCrown2.position.set(0.02, 1.52, 0.95);
-
-      const yantraFrame = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.24, 0.24), antiqueGoldMat);
-      yantraFrame.position.set(0.02, 1.28, 1.18);
-      mandirGroup.add(balajiPedestal, balajiIdol1, balajiCrown1, balajiIdol2, balajiCrown2, yantraFrame);
-
-      // E. Traditional Brass Diya (Oil Lamp) with Real Flickering Flame
-      const diyaGroup = new THREE.Group();
-      diyaGroup.position.set(0.20, 1.15, -0.38);
-
-      const diyaFoot = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.065, 0.02, 16), antiqueGoldMat);
-      const diyaStem = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.022, 0.08, 16), antiqueGoldMat);
-      diyaStem.position.y = 0.05;
-
-      const diyaBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.03, 0.045, 20), antiqueGoldMat);
-      diyaBowl.position.y = 0.10;
+      diyaBowl.position.y = 0.89;
 
       const diyaOil = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.075, 0.075, 0.008, 16),
+        new THREE.CylinderGeometry(0.13, 0.13, 0.015, 16),
         new THREE.MeshStandardMaterial({ color: 0xc47e22, roughness: 0.15, metalness: 0.4, fog: false })
       );
-      diyaOil.position.y = 0.12;
+      diyaOil.position.y = 0.93;
 
       sanctumFlameMesh = new THREE.Mesh(
-        new THREE.ConeGeometry(0.028, 0.09, 16),
+        new THREE.ConeGeometry(0.04, 0.14, 16),
         new THREE.MeshBasicMaterial({ color: 0xffaa22 })
       );
-      sanctumFlameMesh.position.set(0.06, 0.17, 0);
+      sanctumFlameMesh.position.set(0, 1.02, 0);
 
-      sanctumDiyaLight = new THREE.PointLight(0xff9a28, 0.85, 2.5, 2.0);
-      sanctumDiyaLight.position.set(0.06, 0.20, 0);
+      sanctumDiyaLight = new THREE.PointLight(0xff9a28, 0.85, 3.5, 2.0);
+      sanctumDiyaLight.position.set(0, 1.05, 0);
 
-      diyaGroup.add(diyaFoot, diyaStem, diyaBowl, diyaOil, sanctumFlameMesh, sanctumDiyaLight);
-      mandirGroup.add(diyaGroup);
+      diyaConsole.add(pedBase, pedTrim, diyaBowl, diyaOil, sanctumFlameMesh, sanctumDiyaLight);
+      roomGroup.add(diyaConsole);
 
-      // F. Ceremonial Brass Bell (Ghanti) & Carved Agarbatti Stand
-      const ghantiGroup = new THREE.Group();
-      ghantiGroup.position.set(0.20, 1.15, 0.38);
-
-      const bellBase = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.065, 0.08, 20), antiqueGoldMat);
-      bellBase.position.y = 0.04;
-      const bellHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, 0.12, 16), antiqueGoldMat);
-      bellHandle.position.y = 0.14;
-      const garudaFinial = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.05, 12), antiqueGoldMat);
-      garudaFinial.position.y = 0.22;
-      ghantiGroup.add(bellBase, bellHandle, garudaFinial);
-
-      // Agarbatti Burner with Glowing Incense Sticks
-      const agarbattiStand = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.03, 16), antiqueGoldMat);
-      agarbattiStand.position.set(0, 0.015, 0.14);
-      for (let s = -1; s <= 1; s++) {
-        const stick = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.003, 0.003, 0.18, 8),
-          new THREE.MeshStandardMaterial({ color: 0x3d281a, roughness: 0.9, fog: false })
-        );
-        stick.position.set(s * 0.015, 0.09, 0.14);
-        stick.rotation.z = s * 0.12;
-
-        const glowingTip = new THREE.Mesh(
-          new THREE.SphereGeometry(0.005, 8, 8),
-          new THREE.MeshBasicMaterial({ color: 0xff3300 })
-        );
-        glowingTip.position.set(s * 0.022, 0.18, 0.14);
-        ghantiGroup.add(stick, glowingTip);
-      }
-      ghantiGroup.add(agarbattiStand);
-      mandirGroup.add(ghantiGroup);
-
-      roomGroup.add(mandirGroup);
-
-      // 10. RISING INCENSE SMOKE PARTICLES
-      // Incense burner world coordinates:
-      // room center is (-13.0, 0, -70.0)
-      // mandir is at local X = -2.05, ghanti at local X = -2.05 + 0.20 = -1.85, Z = 0.38 + 0.14 = 0.52
-      incenseOrigin.set(-14.85, 1.25, -69.48);
+      // 6. RISING INCENSE SMOKE PARTICLES
+      incenseOrigin.set(-hallWidth / 2 - 5.5, 1.05, -70.0);
 
       const incGeo = new THREE.BufferGeometry();
       const incPos = new Float32Array(incenseCount * 3);
       for (let i = 0; i < incenseCount; i++) {
         incPos[i * 3 + 0] = incenseOrigin.x + (Math.random() - 0.5) * 0.05;
-        incPos[i * 3 + 1] = 1.15 + (i / incenseCount) * 1.5;
+        incPos[i * 3 + 1] = 1.05 + (i / incenseCount) * 1.8;
         incPos[i * 3 + 2] = incenseOrigin.z + (Math.random() - 0.5) * 0.05;
       }
       incGeo.setAttribute("position", new THREE.BufferAttribute(incPos, 3));
@@ -4663,7 +4311,7 @@ export default function ThreeMansionEngine() {
         incGeo,
         new THREE.PointsMaterial({
           color: 0xe0d6c4,
-          size: 0.045,
+          size: 0.05,
           transparent: true,
           opacity: 0.60,
           blending: THREE.NormalBlending,
@@ -4671,12 +4319,34 @@ export default function ThreeMansionEngine() {
       );
       roomGroup.add(incenseParticles);
 
-      scene.add(roomGroup);
+      // 7. GOLDEN DUST PARTICLES DRIFTING ACROSS EXPANSIVE SANCTUM GALLERY
+      const sDustGeo = new THREE.BufferGeometry();
+      const sDustPos = new Float32Array(versaceDustCount * 3);
+      for (let i = 0; i < versaceDustCount; i++) {
+        sDustPos[i * 3 + 0] = -3.5 - Math.random() * 4.0;
+        sDustPos[i * 3 + 1] = 0.6 + Math.random() * 4.5;
+        sDustPos[i * 3 + 2] = -4.0 + Math.random() * 8.0;
+      }
+      sDustGeo.setAttribute("position", new THREE.BufferAttribute(sDustPos, 3));
+      const sanctumDust = new THREE.Points(
+        sDustGeo,
+        new THREE.PointsMaterial({
+          color: 0xffdfaa,
+          size: 0.05,
+          transparent: true,
+          opacity: 0.80,
+          blending: THREE.AdditiveBlending,
+        })
+      );
+      roomGroup.add(sanctumDust);
+
+      hallwayGroup.add(roomGroup);
       return roomGroup;
     };
 
     // -------------------------------------------------------------------------
-    // CHAMBER IV: CORPORATE RECEPTION (Sculptural Bronze Desk, Linear Pendant, Lounge)
+    // -------------------------------------------------------------------------
+    // CHAMBER IV: CORPORATE RECEPTION (Curated Commercial Architectural Gallery)
     // -------------------------------------------------------------------------
     const buildCorporateReceptionChamber = () => {
       const { roomGroup, roomW, roomD, roomH, wallMat } = buildRoomShell(
@@ -4684,807 +4354,222 @@ export default function ThreeMansionEngine() {
         -95,
         1,
         0x361d28, // deep rich aubergine wall base
-        sanctumFloorMarbleMat // Italian Calacatta Gold marble tiles with fog: false
+        grandFloorMat // Continuous Italian Nero Marquina black marble floor
       );
       wallMat.fog = false;
 
-      // 1. CEILING: Clean crisp architectural ceiling with surface-mounted track lighting
-      const trackBar1 = new THREE.Mesh(
-        new THREE.BoxGeometry(0.06, 0.03, 5.4),
-        receptionBronzeMat
-      );
-      trackBar1.position.set(0.90, roomH - 0.03, -0.60);
-      roomGroup.add(trackBar1);
+      const backX = roomW / 2; // +8.0
 
-      // Track canisters with warm directional spot pool
-      const trackTargets = [
-        [-1.60, 0.15, new THREE.Vector3(2.8, 3.6, -1.4)], // aiming at insignia
-        [-0.40, -0.10, new THREE.Vector3(1.3, 0.9, 0.2)], // aiming at bronze desk
-        [0.80, -0.35, new THREE.Vector3(1.2, 0.4, 2.3)], // aiming at lounge / stag
-      ] as [number, number, THREE.Vector3][];
-
-      for (const [tz, trotY] of trackTargets) {
-        const can = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.13, 16), receptionBronzeMat);
-        can.position.set(0.90, roomH - 0.10, tz);
-        can.rotation.x = 0.25;
-        can.rotation.y = trotY;
-        const canRim = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.007, 12, 16), receptionGoldMat);
-        canRim.position.set(0.90, roomH - 0.16, tz);
-        canRim.rotation.x = Math.PI / 2;
-        const canLens = new THREE.Mesh(new THREE.CircleGeometry(0.04, 12), coveLightMat);
-        canLens.position.set(0.90, roomH - 0.16, tz);
-        canLens.rotation.x = Math.PI / 2;
-        roomGroup.add(can, canRim, canLens);
-      }
-
-      // 2. BACK FEATURE WALL (At local X = +3.20, spanning Z from -4.0 to +2.8)
-      // Deep plum/aubergine architectural wall paneling
+      // Back Wall: Deep plum/aubergine architectural wall paneling
       const featureBackWall = new THREE.Mesh(
-        new THREE.PlaneGeometry(6.8, roomH),
+        new THREE.PlaneGeometry(roomD, roomH),
         aubergineWallMat
       );
-      featureBackWall.position.set(3.20, roomH / 2, -0.60);
+      featureBackWall.position.set(backX - 0.04, roomH / 2, 0);
       featureBackWall.rotation.y = -Math.PI / 2;
       roomGroup.add(featureBackWall);
 
-      // Horizontal architectural reveal battens on plum wall
-      for (const yLevel of [1.65, 2.45]) {
-        const revealBatten = new THREE.Mesh(
-          new THREE.BoxGeometry(0.02, 0.035, 6.78),
-          receptionBronzeMat
-        );
-        revealBatten.position.set(3.18, yLevel, -0.60);
-        roomGroup.add(revealBatten);
-      }
-
-      // 3. GLAZED TERRACOTTA HERRINGBONE TILE PANEL
-      // Behind desk: runs floor to ceiling, width 1.65m, centered at Z = -1.40
-      const herringbonePanel = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.65, roomH),
-        terracottaHerringboneMat
-      );
-      herringbonePanel.position.set(3.16, roomH / 2, -1.40);
-      herringbonePanel.rotation.y = -Math.PI / 2;
-
-      // Dark bronze slim perimeter reveals framing the terracotta tile panel
-      const hbFrameL = new THREE.Mesh(new THREE.BoxGeometry(0.03, roomH, 0.04), receptionBronzeMat);
-      hbFrameL.position.set(3.15, roomH / 2, -1.40 - 1.65 / 2);
-      const hbFrameR = new THREE.Mesh(new THREE.BoxGeometry(0.03, roomH, 0.04), receptionBronzeMat);
-      hbFrameR.position.set(3.15, roomH / 2, -1.40 + 1.65 / 2);
-      roomGroup.add(herringbonePanel, hbFrameL, hbFrameR);
-
-      // 4. ILLUMINATED "SHALU'S LAXMI GROUP OF COMPANIES" INSIGNIA SHIELD
-      const insigniaGroup = new THREE.Group();
-      insigniaGroup.position.set(3.14, 3.65, -1.40);
-      insigniaGroup.rotation.y = -Math.PI / 2;
-
-      // Primary Illuminated Insignia Graphic Face (transparent shield on terracotta tile)
-      const insigniaFace = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.25, 1.20),
-        laxmiInsigniaMat
-      );
-      insigniaFace.position.z = 0.015;
-
-      insigniaGroup.add(insigniaFace);
-
-      // Soft Backlit Golden Corona Light behind insignia on terracotta tile
-      const insigniaHaloLight = new THREE.PointLight(0xffdf99, 0.95, 3.0);
-      insigniaHaloLight.position.set(3.15, 3.65, -1.40);
-      roomGroup.add(insigniaGroup, insigniaHaloLight);
-
-      // 5. LEFT POWDER PINK FLOATING CREDENZA (Z = -2.85)
-      const pinkCredenzaGroup = new THREE.Group();
-      pinkCredenzaGroup.position.set(2.80, 1.02, -2.85);
-
-      // Powder pink lacquer dual-drawer body
-      const credenzaBody = new THREE.Mesh(
-        new THREE.BoxGeometry(0.48, 0.38, 1.30),
-        powderPinkLacquerMat
-      );
-
-      // Drawer divider reveal seam
-      const drawerSeam = new THREE.Mesh(
-        new THREE.BoxGeometry(0.485, 0.012, 1.28),
-        receptionBronzeMat
-      );
-
-      // Dual brushed brass spherical knobs
-      const knob1 = new THREE.Mesh(new THREE.SphereGeometry(0.016, 16, 16), receptionGoldMat);
-      knob1.position.set(-0.25, 0.07, -0.32);
-      const knob2 = new THREE.Mesh(new THREE.SphereGeometry(0.016, 16, 16), receptionGoldMat);
-      knob2.position.set(-0.25, 0.07, 0.32);
-
-      // Open dark bronze tubular steel support framework below
-      const frameLower = new THREE.Mesh(
-        new THREE.BoxGeometry(0.46, 0.03, 1.28),
-        receptionBronzeMat
-      );
-      frameLower.position.set(0, -0.58, 0);
-
-      const frameLeg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.58), receptionBronzeMat);
-      frameLeg1.position.set(-0.20, -0.29, -0.60);
-      const frameLeg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.58), receptionBronzeMat);
-      frameLeg2.position.set(-0.20, -0.29, 0.60);
-
-      // Drop contact shadow on floor under credenza
-      const credenzaShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.60, 1.45),
-        new THREE.MeshBasicMaterial({ color: 0x140e0a, transparent: true, opacity: 0.40, depthWrite: false })
-      );
-      credenzaShadow.rotation.x = -Math.PI / 2;
-      credenzaShadow.position.set(0, -1.018, 0);
-
-      pinkCredenzaGroup.add(credenzaBody, drawerSeam, knob1, knob2, frameLower, frameLeg1, frameLeg2, credenzaShadow);
-      roomGroup.add(pinkCredenzaGroup);
-
-      // Modern metallic triple switch plate on plum wall above credenza
-      const switchPlate = new THREE.Mesh(
-        new THREE.BoxGeometry(0.02, 0.12, 0.22),
-        receptionGoldMat
-      );
-      switchPlate.position.set(3.18, 1.65, -2.55);
-      roomGroup.add(switchPlate);
-
-      // 6. BESPOKE RECEPTION DESK (Antique Bronze Monolith + Cantilever Wenge Waterfall)
-      const deskGroup = new THREE.Group();
-      deskGroup.position.set(1.25, 0, 0);
-
-      // --- A) Sculptural Brushed Antique Bronze Monolith Shield (Right Volume) ---
-      const shieldW = 1.15; // along Z
-      const shieldH = 1.22; // height
-      const shieldD = 0.24; // depth in X
-      const shieldZ = 0.30; // centered at Z = 0.30
-
-      const bronzeShield = new THREE.Mesh(
-        new THREE.BoxGeometry(shieldD, shieldH, shieldW),
-        sculpturalBronzeDeskMat
-      );
-      bronzeShield.position.set(0, shieldH / 2, shieldZ);
-
-      // Vertical shadow reveal groove down the right-hand third
-      const revealGroove = new THREE.Mesh(
-        new THREE.BoxGeometry(shieldD + 0.01, shieldH, 0.022),
-        receptionBronzeMat
-      );
-      revealGroove.position.set(0, shieldH / 2, shieldZ + 0.32);
-
-      // "Reception" Plaque / Lettering near top right
-      const receptionPlaque = new THREE.Mesh(
-        new THREE.BoxGeometry(0.02, 0.08, 0.42),
-        receptionGoldMat
-      );
-      receptionPlaque.position.set(-shieldD / 2 - 0.012, shieldH - 0.16, shieldZ + 0.22);
-
-      // Grounding contact shadow under bronze monolith
-      const shieldShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(shieldD + 0.25, shieldW + 0.25),
-        new THREE.MeshBasicMaterial({ color: 0x140e0a, transparent: true, opacity: 0.55, depthWrite: false })
-      );
-      shieldShadow.rotation.x = -Math.PI / 2;
-      shieldShadow.position.set(0, 0.003, shieldZ);
-
-      // Dramatic warm metallic spotlight on the front face of bronze monolith
-      const bronzeMonolithSpot = new THREE.SpotLight(0xfffae6, 3.2, 12, Math.PI / 3.8, 0.45);
-      bronzeMonolithSpot.position.set(-1.40, 3.6, shieldZ);
-      bronzeMonolithSpot.target = bronzeShield;
-      deskGroup.add(bronzeShield, revealGroove, receptionPlaque, shieldShadow, bronzeMonolithSpot);
-
-      // --- B) Cantilevered Wenge Waterfall Desktop (Left Volume) ---
-      // Extends from Z = -2.05 to Z = +0.10 (penetrating inside the bronze monolith)
-      const deskLen = 2.15;
-      const deskDepth = 0.82;
-      const deskThick = 0.055;
-      const deskY = 0.76;
-      const deskZCenter = -2.05 + deskLen / 2; // -0.975
-
-      const wengeTop = new THREE.Mesh(
-        new THREE.BoxGeometry(deskDepth, deskThick, deskLen),
-        wengeTimberMat
-      );
-      wengeTop.position.set(0.12, deskY - deskThick / 2, deskZCenter);
-
-      // Vertical Waterfall Leg at Left Flank (Z = -2.05)
-      const wengeWaterfallLeg = new THREE.Mesh(
-        new THREE.BoxGeometry(deskDepth, deskY, deskThick),
-        wengeTimberMat
-      );
-      wengeWaterfallLeg.position.set(0.12, deskY / 2, -2.05 + deskThick / 2);
-
-      // Modesty Panel
-      const modestyPanel = new THREE.Mesh(
-        new THREE.BoxGeometry(0.03, 0.60, deskLen - 0.15),
-        wengeTimberMat
-      );
-      modestyPanel.position.set(0.48, deskY - 0.33, deskZCenter + 0.05);
-
-      // Contact shadow under waterfall leg
-      const legShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(deskDepth + 0.15, 0.25),
-        new THREE.MeshBasicMaterial({ color: 0x140e0a, transparent: true, opacity: 0.50, depthWrite: false })
-      );
-      legShadow.rotation.x = -Math.PI / 2;
-      legShadow.position.set(0.12, 0.003, -2.05 + deskThick / 2);
-
-      deskGroup.add(wengeTop, wengeWaterfallLeg, modestyPanel, legShadow);
-
-      // --- C) Desk Accessories & Kinetic Balance Toy ---
-      // Executive dark leather blotter pad
-      const leatherBlotter = new THREE.Mesh(
-        new THREE.BoxGeometry(0.52, 0.012, 0.76),
-        new THREE.MeshStandardMaterial({ color: 0x181412, roughness: 0.55, fog: false })
-      );
-      leatherBlotter.position.set(0.08, deskY + 0.006, -1.15);
-      deskGroup.add(leatherBlotter);
-
-      // Modern executive tablet / keyboard folio
-      const tablet = new THREE.Mesh(
-        new THREE.BoxGeometry(0.22, 0.014, 0.32),
-        new THREE.MeshStandardMaterial({ color: 0x222226, roughness: 0.25, metalness: 0.85, fog: false })
-      );
-      tablet.position.set(0.10, deskY + 0.015, -1.15);
-      deskGroup.add(tablet);
-
-      // Kinetic Balancing Gymnast Sculpture (Gold Trapeze Balancer)
-      const balanceToyBase = new THREE.Group();
-      balanceToyBase.position.set(0.08, deskY, -0.52);
-
-      const toyStand = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.18, 16), receptionGoldMat);
-      toyStand.position.y = 0.09;
-      const toyFulcrum = new THREE.Mesh(new THREE.SphereGeometry(0.010, 12, 12), receptionGoldMat);
-      toyFulcrum.position.y = 0.185;
-      balanceToyBase.add(toyStand, toyFulcrum);
-
-      // Swinging arm (rocking pendulum)
-      const balanceArmGroup = new THREE.Group();
-      balanceArmGroup.position.set(0, 0.185, 0);
-
-      // Stylized gymnast figurine
-      const gymnastTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.010, 0.07, 12), receptionGoldMat);
-      gymnastTorso.position.y = 0.04;
-      const gymnastHead = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 12), receptionGoldMat);
-      gymnastHead.position.y = 0.085;
-      const gymnastLegs = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.06, 8), receptionGoldMat);
-      gymnastLegs.position.set(0.015, 0.08, 0);
-      gymnastLegs.rotation.z = 0.45;
-
-      // Curved counterweight wire arc
-      const arcGeo = new THREE.TorusGeometry(0.12, 0.004, 8, 24, Math.PI);
-      const arcWire = new THREE.Mesh(arcGeo, receptionGoldMat);
-      arcWire.position.y = 0.01;
-      arcWire.rotation.x = Math.PI;
-
-      // Brass counterweight spheres at tips
-      const weightL = new THREE.Mesh(new THREE.SphereGeometry(0.015, 12, 12), receptionGoldMat);
-      weightL.position.set(-0.12, -0.05, 0);
-      const weightR = new THREE.Mesh(new THREE.SphereGeometry(0.015, 12, 12), receptionGoldMat);
-      weightR.position.set(0.12, -0.05, 0);
-
-      balanceArmGroup.add(gymnastTorso, gymnastHead, gymnastLegs, arcWire, weightL, weightR);
-      balanceToyBase.add(balanceArmGroup);
-      deskGroup.add(balanceToyBase);
-      corporateKineticToy = balanceArmGroup; // assign for animated physics sway
-
-      // --- D) Executive High-Back Mesh Task Chair (Behind Desk) ---
-      const chairGroup = new THREE.Group();
-      chairGroup.position.set(0.82, 0, -1.15);
-      chairGroup.rotation.y = -Math.PI / 2;
-
-      // 5-Star Castor Base
-      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.08, 16), receptionBronzeMat);
-      hub.position.y = 0.12;
-      chairGroup.add(hub);
-
-      for (let a = 0; a < 5; a++) {
-        const angle = (a / 5) * Math.PI * 2;
-        const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.025, 0.04), receptionBronzeMat);
-        spoke.position.set(Math.cos(angle) * 0.16, 0.11, Math.sin(angle) * 0.16);
-        spoke.rotation.y = -angle;
-
-        const wheel = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 }));
-        wheel.position.set(Math.cos(angle) * 0.32, 0.03, Math.sin(angle) * 0.32);
-        chairGroup.add(spoke, wheel);
-      }
-
-      // Gas-lift piston cylinder
-      const piston = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.34, 16), receptionBronzeMat);
-      piston.position.y = 0.28;
-
-      // Ergonomic mesh seat cushion
-      const chairSeat = new THREE.Mesh(
-        new THREE.BoxGeometry(0.54, 0.08, 0.50),
-        new THREE.MeshStandardMaterial({ color: 0x181818, roughness: 0.75, fog: false })
-      );
-      chairSeat.position.set(0, 0.46, 0);
-
-      // Curved high-back mesh backrest
-      const chairBack = new THREE.Mesh(
-        new THREE.BoxGeometry(0.06, 0.72, 0.48),
-        new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.65, fog: false })
-      );
-      chairBack.position.set(-0.23, 0.84, 0);
-
-      // Adjustable lumbar support bar
-      const lumbar = new THREE.Mesh(
-        new THREE.BoxGeometry(0.08, 0.12, 0.42),
-        new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5, fog: false })
-      );
-      lumbar.position.set(-0.25, 0.68, 0);
-
-      // Sculpted 3D armrests
-      for (const az of [-0.26, 0.26]) {
-        const armPost = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.22, 0.04), receptionBronzeMat);
-        armPost.position.set(-0.05, 0.58, az);
-        const armPad = new THREE.Mesh(
-          new THREE.BoxGeometry(0.26, 0.03, 0.08),
-          new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.7, fog: false })
-        );
-        armPad.position.set(0.04, 0.69, az);
-        chairGroup.add(armPost, armPad);
-      }
-
-      chairGroup.add(piston, chairSeat, chairBack, lumbar);
-      deskGroup.add(chairGroup);
-      roomGroup.add(deskGroup);
-
-      // 7. BACK CREDENZA SHELF & DESIGNER COLLECTIBLE ART OBJECTS
-      // Behind reception desk to the right, visible beside bronze monolith: X = 2.90, Z = 1.05
-      const credenzaRight = new THREE.Mesh(
-        new THREE.BoxGeometry(0.38, 0.54, 1.10),
-        new THREE.MeshStandardMaterial({ color: 0x241c18, roughness: 0.42, fog: false })
-      );
-      credenzaRight.position.set(2.90, 0.54 / 2, 1.05);
-      roomGroup.add(credenzaRight);
-
-      // --- Glossy Jade / Emerald Bearbrick Collectible Figurine ---
-      const bearbrickGroup = new THREE.Group();
-      bearbrickGroup.position.set(2.82, 0.54, 0.85);
-      bearbrickGroup.rotation.y = -Math.PI / 2;
-
-      // Legs
-      for (const lx of [-0.035, 0.035]) {
-        const bLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.14, 16), bearbrickJadeMat);
-        bLeg.position.set(lx, 0.07, 0);
-        bearbrickGroup.add(bLeg);
-      }
-      // Torso
-      const bTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.045, 0.15, 16), bearbrickJadeMat);
-      bTorso.position.y = 0.21;
-      // Golden belly detail
-      const bBelly = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 12), receptionGoldMat);
-      bBelly.position.set(0, 0.20, 0.035);
-      bBelly.scale.set(1, 1.2, 0.4);
-      // Head
-      const bHead = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 16), bearbrickJadeMat);
-      bHead.position.y = 0.32;
-      // Snout
-      const bSnout = new THREE.Mesh(new THREE.SphereGeometry(0.022, 12, 12), bearbrickJadeMat);
-      bSnout.position.set(0, 0.305, 0.042);
-      bSnout.scale.set(1.2, 0.8, 0.8);
-      // Characteristic Bear Ears
-      for (const ex of [-0.05, 0.05]) {
-        const bEar = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.012, 16), bearbrickJadeMat);
-        bEar.position.set(ex, 0.37, 0);
-        bEar.rotation.x = Math.PI / 2;
-        bearbrickGroup.add(bEar);
-      }
-      // Arms
-      for (const ax of [-0.065, 0.065]) {
-        const bArm = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.13, 12), bearbrickJadeMat);
-        bArm.position.set(ax, 0.18, 0);
-        bearbrickGroup.add(bArm);
-      }
-      bearbrickGroup.add(bTorso, bBelly, bHead, bSnout);
-      roomGroup.add(bearbrickGroup);
-
-      // --- Brass Geometric Starburst / Stellation Sculpture ---
-      const starGroup = new THREE.Group();
-      starGroup.position.set(2.82, 0.66, 1.20);
-      const starCenter = new THREE.Mesh(new THREE.DodecahedronGeometry(0.04), receptionGoldMat);
-      starGroup.add(starCenter);
-      for (let s = 0; s < 12; s++) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.10, 8), receptionGoldMat);
-        const theta = (s / 12) * Math.PI * 2;
-        const phi = Math.sin(s * 1.5) * 1.2;
-        spike.position.set(Math.cos(theta) * 0.05, Math.sin(phi) * 0.05, Math.sin(theta) * 0.05);
-        spike.lookAt(spike.position.clone().multiplyScalar(2));
-        starGroup.add(spike);
-      }
-      roomGroup.add(starGroup);
-
-      // 8. SUSPENDED FLUTED CRYSTAL LINEAR PENDANT LUMINAIRE
-      // Suspended directly above reception desk at X = 1.25, Y = 4.40, Z = -0.55
-      const pendantGroup = new THREE.Group();
-      pendantGroup.position.set(1.25, 4.40, -0.55);
-
-      const luminaireLen = 2.40;
-      const luminaireH = 0.15;
-      const luminaireW = 0.13;
-
-      // Outer fluted crystal glass prism body
-      const crystalBody = new THREE.Mesh(
-        new THREE.BoxGeometry(luminaireW, luminaireH, luminaireLen),
-        new THREE.MeshPhysicalMaterial({
-          color: 0xfffcf5,
-          transmission: 0.70,
-          opacity: 0.90,
-          transparent: true,
-          roughness: 0.12,
-          ior: 1.55,
-          fog: false,
-        })
-      );
-
-      // Fluted vertical crystal facets along Z
-      for (let fz = -luminaireLen / 2 + 0.05; fz <= luminaireLen / 2 - 0.05; fz += 0.07) {
-        const facet = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.012, 0.012, luminaireH - 0.02, 8),
-          receptionGoldMat
-        );
-        facet.position.set(luminaireW / 2, 0, fz);
-        crystalBody.add(facet);
-      }
-
-      // Inner warm diffuse LED core (controlled, NO blown-out white blobs)
-      const innerLed = new THREE.Mesh(
-        new THREE.BoxGeometry(luminaireW - 0.04, luminaireH - 0.04, luminaireLen - 0.06),
-        new THREE.MeshStandardMaterial({
-          color: 0xfff2da,
-          emissive: 0xffe6b8,
-          emissiveIntensity: 0.85,
-          roughness: 0.20,
-          fog: false,
-        })
-      );
-
-      // Dark bronze end caps
-      for (const cz of [-luminaireLen / 2 - 0.01, luminaireLen / 2 + 0.01]) {
-        const cap = new THREE.Mesh(new THREE.BoxGeometry(luminaireW + 0.015, luminaireH + 0.015, 0.025), receptionBronzeMat);
-        cap.position.set(0, 0, cz);
-        pendantGroup.add(cap);
-      }
-
-      // Twin suspension aircraft wires up to ceiling (roomH = 7.2m)
-      const wireHeight = (roomH - 0.04) - 4.40; // ~2.76m
-      for (const wz of [-0.85, 0.85]) {
-        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, wireHeight), receptionBronzeMat);
-        wire.position.set(0, wireHeight / 2, wz);
-        const canopy = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.02, 16), receptionBronzeMat);
-        canopy.position.set(0, wireHeight, wz);
-        pendantGroup.add(wire, canopy);
-      }
-
-      // Dramatic focused desk downlight pool
-      const deskSpot = new THREE.SpotLight(0xfffaea, 2.2, 10, Math.PI / 4, 0.55);
-      deskSpot.position.set(0, 0, 0);
-      deskSpot.target.position.set(0, -3.6, 0);
-      pendantGroup.add(crystalBody, innerLed, deskSpot, deskSpot.target);
-      roomGroup.add(pendantGroup);
-
-      // 9. EXECUTIVE GUEST LOUNGE (Plush Plum Velvet Rug, Cognac Armchairs, Tables, Golden Stag)
-      const loungeGroup = new THREE.Group();
-      loungeGroup.position.set(1.20, 0, 2.35);
-
-      // --- Circular Deep Plum Velvet Rug (2.6m Diameter) ---
-      const rugRadius = 1.30;
-      const velvetRug = new THREE.Mesh(
-        new THREE.CylinderGeometry(rugRadius, rugRadius, 0.016, 48),
-        plumVelvetRugMat
-      );
-      velvetRug.position.y = 0.008;
-
-      // Grounding contact shadow under circular rug
-      const rugContactShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(rugRadius * 2.25, rugRadius * 2.25),
-        new THREE.MeshBasicMaterial({ color: 0x120c08, transparent: true, opacity: 0.46, depthWrite: false })
-      );
-      rugContactShadow.rotation.x = -Math.PI / 2;
-      rugContactShadow.position.y = 0.002;
-
-      // Raised outer pile lip reveal
-      const rugLip = new THREE.Mesh(
-        new THREE.TorusGeometry(rugRadius, 0.012, 12, 48),
-        plumVelvetRugMat
-      );
-      rugLip.rotation.x = Math.PI / 2;
-      rugLip.position.y = 0.016;
-
-      loungeGroup.add(velvetRug, rugContactShadow, rugLip);
-
-      // --- Pair of Curved Cognac Leather Tub Armchairs ---
-      const createCognacArmchair = () => {
-        const chair = new THREE.Group();
-
-        // Four slim tapered splayed bronze legs with brass ferrules
-        for (const [lx, lz] of [[-0.26, -0.26], [-0.26, 0.26], [0.26, -0.26], [0.26, 0.26]]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.022, 0.38, 12), receptionBronzeMat);
-          leg.position.set(lx, 0.19, lz);
-          leg.rotation.x = lz * 0.25;
-          leg.rotation.z = -lx * 0.25;
-          const ferrule = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.019, 0.08, 12), receptionGoldMat);
-          ferrule.position.set(lx, 0.04, lz);
-          chair.add(leg, ferrule);
-        }
-
-        // Thick contoured seat cushion in warm caramel cognac leather
-        const seat = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.36, 0.34, 0.16, 24),
-          corporateCognacLeatherMat
-        );
-        seat.position.y = 0.44;
-
-        // Solid curved tub backrest with realistic double-layer thickness
-        const backrestOuter = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.39, 0.38, 0.46, 24, 1, false, 0, Math.PI * 1.20),
-          corporateCognacLeatherMat
-        );
-        backrestOuter.position.set(0, 0.65, 0);
-        backrestOuter.rotation.y = Math.PI * 0.90;
-
-        const backrestInner = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.34, 0.33, 0.44, 24, 1, false, 0, Math.PI * 1.20),
-          corporateCognacLeatherMat
-        );
-        backrestInner.position.set(0, 0.65, 0);
-        backrestInner.rotation.y = Math.PI * 0.90;
-
-        // Welt cord piping rim along backrest top edge
-        const weltRim = new THREE.Mesh(
-          new THREE.TorusGeometry(0.365, 0.022, 12, 32, Math.PI * 1.20),
-          corporateCognacLeatherMat
-        );
-        weltRim.position.set(0, 0.88, 0);
-        weltRim.rotation.x = Math.PI / 2;
-        weltRim.rotation.z = Math.PI * 0.90;
-
-        // Armchair contact shadow on rug
-        const chairShadow = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.88, 0.88),
-          new THREE.MeshBasicMaterial({ color: 0x140e0a, transparent: true, opacity: 0.55, depthWrite: false })
-        );
-        chairShadow.rotation.x = -Math.PI / 2;
-        chairShadow.position.y = 0.018;
-
-        chair.add(seat, backrestOuter, backrestInner, weltRim, chairShadow);
-        return chair;
-      };
-
-      // Chair 1 (Rear Left): facing inward
-      const chair1 = createCognacArmchair();
-      chair1.position.set(0.35, 0, -0.65);
-      chair1.rotation.y = 0.38;
-
-      // Chair 2 (Front Right): facing inward
-      const chair2 = createCognacArmchair();
-      chair2.position.set(-0.25, 0, 0.60);
-      chair2.rotation.y = -0.48;
-
-      loungeGroup.add(chair1, chair2);
-
-      // --- Central Round Dark Marble Side Table ---
-      const sideTableGroup = new THREE.Group();
-      sideTableGroup.position.set(0.15, 0, 0);
-
-      // Stepped fluted dark bronze pedestal base
-      const pedBase = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.22, 0.03, 24), receptionBronzeMat);
-      pedBase.position.y = 0.015;
-      const pedCol = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.50, 16), receptionBronzeMat);
-      pedCol.position.y = 0.28;
-      const pedColGold = new THREE.Mesh(new THREE.TorusGeometry(0.048, 0.008, 12, 16), receptionGoldMat);
-      pedColGold.position.y = 0.50;
-      pedColGold.rotation.x = Math.PI / 2;
-
-      // Nero Marquina dark marble tabletop disc
-      const marbleTop = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.26, 0.26, 0.028, 32),
-        neroMarquinaPedestalMat
-      );
-      marbleTop.position.y = 0.54;
-
-      // Miniature stylized dark bronze gazelle / deer sculptures on table
-      for (const [gz, gr] of [[-0.06, 0.3], [0.06, -0.4]]) {
-        const miniDeer = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.12, 8), receptionBronzeMat);
-        miniDeer.position.set(0, 0.61, gz);
-        miniDeer.rotation.y = gr;
-        sideTableGroup.add(miniDeer);
-      }
-
-      sideTableGroup.add(pedBase, pedCol, pedColGold, marbleTop);
-      loungeGroup.add(sideTableGroup);
-      roomGroup.add(loungeGroup);
-
-      // --- Foreground Calacatta Marble Coffee Table with Golden Stag Sculpture ---
-      // Position: At local X = -0.45, Z = 1.65 (sits in the foreground right of camera view)
-      const stagTableGroup = new THREE.Group();
-      stagTableGroup.position.set(-0.45, 0, 1.65);
-
-      // Grounding contact shadow on marble floor
-      const stagTableShadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.15, 1.15),
-        new THREE.MeshBasicMaterial({ color: 0x140e0a, transparent: true, opacity: 0.52, depthWrite: false })
-      );
-      stagTableShadow.rotation.x = -Math.PI / 2;
-      stagTableShadow.position.y = 0.003;
-
-      // Cylindrical dark bronze fluted pedestal base with brass trim ring
-      const stagPedBase = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.04, 32), receptionBronzeMat);
-      stagPedBase.position.y = 0.02;
-      const stagPedCol = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.34, 24), receptionBronzeMat);
-      stagPedCol.position.y = 0.21;
-      const stagPedRing = new THREE.Mesh(new THREE.TorusGeometry(0.125, 0.012, 12, 24), receptionGoldMat);
-      stagPedRing.position.y = 0.37;
-      stagPedRing.rotation.x = Math.PI / 2;
-
-      // Round Calacatta Gold polished marble slab top (balanced warmth so veins show)
-      const stagMarbleTop = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.44, 0.44, 0.038, 36),
-        new THREE.MeshStandardMaterial({
-          map: calacattaMarbleTex,
-          roughness: 0.18,
-          metalness: 0.08,
-          color: 0xd8d0be,
-          fog: false,
-        })
-      );
-      stagMarbleTop.position.y = 0.40;
-
-      // --- Sculpted Majestic Polished Golden Stag Figurine ---
-      const stagFigurine = new THREE.Group();
-      stagFigurine.position.set(0, 0.42, 0);
-      stagFigurine.scale.set(1.35, 1.35, 1.35); // majestic prominent scale
-      stagFigurine.rotation.y = -Math.PI * 0.65; // elegant 3/4 pose
-
-      // Muscular chest & body
-      const stagChest = new THREE.Mesh(new THREE.SphereGeometry(0.048, 16, 16), receptionGoldMat);
-      stagChest.position.set(0, 0.16, 0.04);
-      stagChest.scale.set(0.9, 1.2, 1.3);
-
-      const stagHindquarters = new THREE.Mesh(new THREE.SphereGeometry(0.042, 16, 16), receptionGoldMat);
-      stagHindquarters.position.set(0, 0.15, -0.06);
-      stagHindquarters.scale.set(0.85, 1.1, 1.2);
-
-      // Four slender articulated legs with hooves
-      for (const [lx, lz] of [[-0.028, 0.04], [0.028, 0.04], [-0.025, -0.06], [0.025, -0.06]]) {
-        const legUpper = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.005, 0.09, 8), receptionGoldMat);
-        legUpper.position.set(lx, 0.10, lz);
-        const legLower = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.004, 0.08, 8), receptionGoldMat);
-        legLower.position.set(lx, 0.035, lz + 0.005);
-        const hoof = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.008, 0.014), receptionGoldMat);
-        hoof.position.set(lx, 0.004, lz + 0.006);
-        stagFigurine.add(legUpper, legLower, hoof);
-      }
-
-      // Elegant arched neck
-      const stagNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.034, 0.13, 12), receptionGoldMat);
-      stagNeck.position.set(0, 0.24, 0.08);
-      stagNeck.rotation.x = -0.35;
-
-      // Sculpted head & alert ears
-      const stagHead = new THREE.Mesh(new THREE.ConeGeometry(0.024, 0.07, 12), receptionGoldMat);
-      stagHead.position.set(0, 0.30, 0.12);
-      stagHead.rotation.x = 1.15;
-
-      for (const ex of [-0.022, 0.022]) {
-        const ear = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.038, 8), receptionGoldMat);
-        ear.position.set(ex, 0.32, 0.09);
-        ear.rotation.z = -ex * 1.4;
-        ear.rotation.x = -0.2;
-        stagFigurine.add(ear);
-      }
-
-      // Majestic branching multi-tined antlers
-      for (const side of [-1, 1]) {
-        const antlerMain = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.006, 0.16, 8), receptionGoldMat);
-        antlerMain.position.set(side * 0.035, 0.39, 0.08);
-        antlerMain.rotation.z = -side * 0.45;
-        antlerMain.rotation.x = -0.25;
-
-        // Branching tines
-        for (let b = 1; b <= 3; b++) {
-          const tine = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.0035, 0.05, 6), receptionGoldMat);
-          tine.position.set(side * (0.025 + b * 0.018), 0.35 + b * 0.03, 0.09 + b * 0.01);
-          tine.rotation.z = -side * 0.95;
-          tine.rotation.x = 0.30;
-          stagFigurine.add(tine);
-        }
-        stagFigurine.add(antlerMain);
-      }
-
-      stagFigurine.add(stagChest, stagHindquarters, stagNeck, stagHead);
-      stagTableGroup.add(stagTableShadow, stagPedBase, stagPedCol, stagPedRing, stagMarbleTop, stagFigurine);
-      roomGroup.add(stagTableGroup);
-
-      // 10. RIGHT BOUNDARY (Z = +3.65 to +4.0): WHITE PILASTER & BOARDROOM GLASS PARTITION
-      // Architectural White Pilaster
-      const pilaster = new THREE.Mesh(
-        new THREE.BoxGeometry(1.10, roomH, 0.16),
-        new THREE.MeshStandardMaterial({ color: 0xf6f3ea, roughness: 0.70, fog: false })
-      );
-      pilaster.position.set(1.60, roomH / 2, 3.65);
-      roomGroup.add(pilaster);
-
-      // Stacked Pair of Framed B&W Architectural Photographs on Pilaster (facing into the room toward -Z)
-      for (const [py, pTex] of [[2.70, texCh4Boardroom], [1.90, texCh4SkyLounge]] as [number, THREE.Texture][]) {
-        const photoFrame = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.56, 0.025), receptionBronzeMat);
-        photoFrame.position.set(1.60, py, 3.56);
-        const photoMatBorder = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.50, 0.50),
-          new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, fog: false, side: THREE.DoubleSide })
-        );
-        photoMatBorder.position.set(1.60, py, 3.542);
-        photoMatBorder.rotation.y = Math.PI;
-
-        const photoPic = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.38, 0.38),
-          new THREE.MeshStandardMaterial({ map: pTex, roughness: 0.4, fog: false, side: THREE.DoubleSide })
-        );
-        photoPic.position.set(1.60, py, 3.538);
-        photoPic.rotation.y = Math.PI;
-
-        roomGroup.add(photoFrame, photoMatBorder, photoPic);
-      }
-
-      // Floor-to-Ceiling Boardroom Glass Partition
-      const glassPartitionW = 2.80;
-      const glassPartition = new THREE.Mesh(
-        new THREE.PlaneGeometry(glassPartitionW, roomH),
-        boardroomGlassMat
-      );
-      glassPartition.position.set(3.20, roomH / 2, 3.65);
-      glassPartition.rotation.y = Math.PI;
-
-      // Frosted geometric manifestation band
-      const frostedBand = new THREE.Mesh(
-        new THREE.PlaneGeometry(glassPartitionW, 1.40),
-        frostedManifestationMat
-      );
-      frostedBand.position.set(3.20, 1.80, 3.64);
-      frostedBand.rotation.y = Math.PI;
-
-      // Dark bronze framing mullions
-      for (const mx of [2.15, 3.20, 4.25]) {
-        const mullion = new THREE.Mesh(new THREE.BoxGeometry(0.06, roomH, 0.08), receptionBronzeMat);
-        mullion.position.set(mx, roomH / 2, 3.65);
-        roomGroup.add(mullion);
-      }
-      roomGroup.add(glassPartition, frostedBand);
-
-      // 11. CURATED EXHIBITION ARTWORKS (Commercial Portfolio on Left Wall & Entry Flanks)
-      // Left Wall (Z = -roomD/2): Exhibiting 2 fine art works with antique gold museum frames
-      const sideWallLeft = new THREE.Mesh(
-        new THREE.PlaneGeometry(roomW, roomH),
-        wallMat
-      );
-      sideWallLeft.position.set(0, roomH / 2, -roomD / 2);
-      roomGroup.add(sideWallLeft);
-
-      // Artwork: The Sky Lounge Executive Suite
-      const ch4ArtSkyLounge = createFramedArtMesh(texCh4SkyLounge, 3.8, 2.4, 0.08, true);
-      ch4ArtSkyLounge.position.set(-2.5, roomH / 2, -roomD / 2 + 0.08);
-
-      // Artwork: The Executive Rooftop Pavilion
-      const ch4ArtTerrace = createFramedArtMesh(texCh4Terrace, 3.8, 2.4, 0.08, true);
-      ch4ArtTerrace.position.set(2.5, roomH / 2, -roomD / 2 + 0.08);
-      roomGroup.add(ch4ArtSkyLounge, ch4ArtTerrace);
-
-      // Entrance Flanks: Exhibiting 2 works
-      const ch4ArtDining = createFramedArtMesh(texCh4Dining, 3.2, 2.2, 0.07, true);
-      ch4ArtDining.position.set(-roomW / 2 + 0.08, roomH / 2, -4.5);
-      ch4ArtDining.rotation.y = Math.PI / 2;
-
-      const ch4ArtVip = createFramedArtMesh(texCh4Vip, 3.2, 2.2, 0.07, true);
-      ch4ArtVip.position.set(-roomW / 2 + 0.08, roomH / 2, 4.5);
-      ch4ArtVip.rotation.y = Math.PI / 2;
-      roomGroup.add(ch4ArtDining, ch4ArtVip);
-
-      scene.add(roomGroup);
+      // Artwork 1 (Back Wall Hero): Monumental 12.2m x 5.8m 4K Executive Boardroom Centerpiece
+      const ch4HeroArt = createFramedArtMesh(texCh4Boardroom, 12.2, 5.8, 0.11, true, 0.14);
+      ch4HeroArt.group.position.set(backX - 0.08, 3.40, 0);
+      ch4HeroArt.group.rotation.y = -Math.PI / 2;
+      roomGroup.add(ch4HeroArt.group);
+      heroArtRefs.current["corporate"] = ch4HeroArt;
+
+      // Side Wall 1 (Z = -roomD/2): Exhibiting 2 monumental fine art commercial works
+      const sideWall1 = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), wallMat);
+      sideWall1.position.set(0, roomH / 2, -roomD / 2);
+
+      // Artwork 2 (Side Wall 1 Left): The Sky Lounge Pavilion (Monumental 5.8m x 3.8m)
+      const ch4ArtSkyLounge = createFramedArtMesh(texCh4SkyLounge, 5.8, 3.8, 0.09, true);
+      ch4ArtSkyLounge.group.position.set(-3.5, 3.60, -roomD / 2 + 0.08);
+
+      // Artwork 3 (Side Wall 1 Right): The Executive Dining Suite (Monumental 5.8m x 3.8m)
+      const ch4ArtDining = createFramedArtMesh(texCh4Dining, 5.8, 3.8, 0.09, true);
+      ch4ArtDining.group.position.set(3.5, 3.60, -roomD / 2 + 0.08);
+      roomGroup.add(sideWall1, ch4ArtSkyLounge.group, ch4ArtDining.group);
+
+      // Side Wall 2 (Z = +roomD/2): Exhibiting 2 monumental fine art commercial works
+      const sideWall2 = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), wallMat);
+      sideWall2.position.set(0, roomH / 2, roomD / 2);
+      sideWall2.rotation.y = Math.PI;
+
+      // Artwork 4 (Side Wall 2 Left): The VIP Executive Salon (Monumental 5.8m x 3.8m)
+      const ch4ArtVip = createFramedArtMesh(texCh4Vip, 5.8, 3.8, 0.09, true);
+      ch4ArtVip.group.position.set(-3.5, 3.60, roomD / 2 - 0.08);
+      ch4ArtVip.group.rotation.y = Math.PI;
+
+      // Artwork 5 (Side Wall 2 Right): The Skyline Terrace Lounge (Monumental 5.8m x 3.8m)
+      const ch4ArtTerrace = createFramedArtMesh(texCh4Terrace, 5.8, 3.8, 0.09, true);
+      ch4ArtTerrace.group.position.set(3.5, 3.60, roomD / 2 - 0.08);
+      ch4ArtTerrace.group.rotation.y = Math.PI;
+      roomGroup.add(sideWall2, ch4ArtVip.group, ch4ArtTerrace.group);
+
+      // Warm directional wall illumination
+      const corpSpot = new THREE.SpotLight(0xffecd0, 1.8, 16, Math.PI / 3, 0.45);
+      corpSpot.position.set(2.0, roomH - 0.4, 0);
+      corpSpot.target = ch4HeroArt.group;
+      roomGroup.add(corpSpot);
+
+      hallwayGroup.add(roomGroup);
       return roomGroup;
     };
 
-    // Instantiate all 4 chambers with spatial references for occlusion culling
+    // -------------------------------------------------------------------------
+    // CHAMBER V: ROYAL SALON (Curated Living Room 2 - Marble Media Wall & Floating Staircase)
+    // -------------------------------------------------------------------------
+    const buildRoyalLivingChamber = () => {
+      const { roomGroup, roomW, roomD, roomH, wallMat } = buildRoomShell(
+        -hallWidth / 2,
+        -120,
+        -1,
+        0xe8e0d6,
+        grandFloorMat // Continuous Italian Nero Marquina black marble floor
+      );
+      wallMat.fog = false;
+
+      const backX = -(roomW / 2); // -8.0m
+
+      // Back Feature Wall: Grand Double-Height Acoustic Mineral Plaster & Statuario Accent
+      const featureWallMat = new THREE.MeshStandardMaterial({
+        color: 0xdfd6c8,
+        roughness: 0.72,
+        fog: false,
+      });
+      const featureBackWall = new THREE.Mesh(
+        new THREE.PlaneGeometry(roomD, roomH),
+        featureWallMat
+      );
+      featureBackWall.position.set(backX + 0.04, roomH / 2, 0);
+      featureBackWall.rotation.y = Math.PI / 2;
+      roomGroup.add(featureBackWall);
+
+      // Artwork 1 (Back Wall Hero): Monumental 12.2m x 5.8m 4K Centerpiece - Royal Salon Living Wall
+      const ch5HeroArt = createFramedArtMesh(texCh5Living, 12.2, 5.8, 0.11, true, 0.14);
+      ch5HeroArt.group.position.set(backX + 0.10, 3.40, 0);
+      ch5HeroArt.group.rotation.y = Math.PI / 2;
+      roomGroup.add(ch5HeroArt.group);
+      heroArtRefs.current["royal_living"] = ch5HeroArt;
+
+      // Side Wall 1 (Z = -roomD/2): Exhibiting 2 monumental fine art living room works
+      const sideWall1 = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), wallMat);
+      sideWall1.position.set(0, roomH / 2, -roomD / 2);
+
+      // Artwork 2 (Side Wall 1 Left): The Velvet Cocktail Lounge (Monumental 5.8m x 3.8m)
+      const ch5ArtLounge = createFramedArtMesh(texCh5Lounge, 5.8, 3.8, 0.09, true);
+      ch5ArtLounge.group.position.set(-3.5, 3.60, -roomD / 2 + 0.08);
+
+      // Artwork 3 (Side Wall 1 Right): The Cantilever Staircase Atrium (Monumental 5.8m x 3.8m)
+      const ch5ArtStaircase = createFramedArtMesh(texCh5Staircase, 5.8, 3.8, 0.09, true);
+      ch5ArtStaircase.group.position.set(3.5, 3.60, -roomD / 2 + 0.08);
+      roomGroup.add(sideWall1, ch5ArtLounge.group, ch5ArtStaircase.group);
+
+      // Side Wall 2 (Z = +roomD/2): Exhibiting 2 monumental fine art living room works
+      const sideWall2 = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), flutedOakMat);
+      sideWall2.position.set(0, roomH / 2, roomD / 2);
+      sideWall2.rotation.y = Math.PI;
+
+      // Artwork 4 (Side Wall 2 Left): The Minimalist Media Salon (Monumental 5.8m x 3.8m)
+      const ch5ArtMinimalist = createFramedArtMesh(texCh5Minimalist, 5.8, 3.8, 0.09, true);
+      ch5ArtMinimalist.group.position.set(-3.5, 3.60, roomD / 2 - 0.08);
+      ch5ArtMinimalist.group.rotation.y = Math.PI;
+
+      // Artwork 5 (Side Wall 2 Right): The Royal Velvet Fireside (Monumental 5.8m x 3.8m)
+      const ch5ArtVelvet = createFramedArtMesh(texCh5Velvet, 5.8, 3.8, 0.09, true);
+      ch5ArtVelvet.group.position.set(3.5, 3.60, roomD / 2 - 0.08);
+      ch5ArtVelvet.group.rotation.y = Math.PI;
+      roomGroup.add(sideWall2, ch5ArtMinimalist.group, ch5ArtVelvet.group);
+
+      // Warm directional wall illumination
+      const royalSpot = new THREE.SpotLight(0xffeed6, 1.8, 16, Math.PI / 3, 0.45);
+      royalSpot.position.set(-2.0, roomH - 0.4, 0);
+      royalSpot.target = ch5HeroArt.group;
+      roomGroup.add(royalSpot);
+
+      hallwayGroup.add(roomGroup);
+      return roomGroup;
+    };
+
+    // -------------------------------------------------------------------------
+    // CHAMBER VI: CORPORATE RECEPTION 2 (Laxmi Commercial HQ - Brass Concierge & Chevron Timber)
+    // -------------------------------------------------------------------------
+    const buildCorporateLobbyChamber = () => {
+      const { roomGroup, roomW, roomD, roomH, wallMat } = buildRoomShell(
+        hallWidth / 2,
+        -145,
+        1,
+        0x201c18, // Warm espresso timber tone
+        grandFloorMat // Continuous Italian Nero Marquina black marble floor
+      );
+      wallMat.fog = false;
+
+      const backX = roomW / 2; // +8.0m
+
+      // Back Feature Wall: Architectural chevron timber paneling with bronze trim
+      const featureBackWall = new THREE.Mesh(
+        new THREE.PlaneGeometry(roomD, roomH),
+        wengeTimberMat
+      );
+      featureBackWall.position.set(backX - 0.04, roomH / 2, 0);
+      featureBackWall.rotation.y = -Math.PI / 2;
+      roomGroup.add(featureBackWall);
+
+      // Artwork 1 (Back Wall Hero): Monumental 12.2m x 5.8m 4K Centerpiece - Laxmi Brass Concierge Desk
+      const ch6HeroArt = createFramedArtMesh(texCh6Reception, 12.2, 5.8, 0.11, true, 0.14);
+      ch6HeroArt.group.position.set(backX - 0.08, 3.40, 0);
+      ch6HeroArt.group.rotation.y = -Math.PI / 2;
+      roomGroup.add(ch6HeroArt.group);
+      heroArtRefs.current["corporate_lobby"] = ch6HeroArt;
+
+      // Side Wall 1 (Z = -roomD/2): Exhibiting 2 monumental corporate reception works
+      const sideWall1 = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), wallMat);
+      sideWall1.position.set(0, roomH / 2, -roomD / 2);
+
+      // Artwork 2 (Side Wall 1 Left): The Chevron Timber Executive Foyer (Monumental 5.8m x 3.8m)
+      const ch6ArtChevron = createFramedArtMesh(texCh6Chevron, 5.8, 3.8, 0.09, true);
+      ch6ArtChevron.group.position.set(-3.5, 3.60, -roomD / 2 + 0.08);
+
+      // Artwork 3 (Side Wall 1 Right): The Executive Waiting Lounge (Monumental 5.8m x 3.8m)
+      const ch6ArtFoyer = createFramedArtMesh(texCh6Foyer, 5.8, 3.8, 0.09, true);
+      ch6ArtFoyer.group.position.set(3.5, 3.60, -roomD / 2 + 0.08);
+      roomGroup.add(sideWall1, ch6ArtChevron.group, ch6ArtFoyer.group);
+
+      // Side Wall 2 (Z = +roomD/2): Exhibiting 2 monumental corporate reception works
+      const sideWall2 = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), wallMat);
+      sideWall2.position.set(0, roomH / 2, roomD / 2);
+      sideWall2.rotation.y = Math.PI;
+
+      // Artwork 4 (Side Wall 2 Left): The Entrance Glass Partition Lobby (Monumental 5.8m x 3.8m)
+      const ch6ArtLobby = createFramedArtMesh(texCh6Lobby, 5.8, 3.8, 0.09, true);
+      ch6ArtLobby.group.position.set(-3.5, 3.60, roomD / 2 - 0.08);
+      ch6ArtLobby.group.rotation.y = Math.PI;
+
+      // Artwork 5 (Side Wall 2 Right): The Global Operations Executive Suite (Monumental 5.8m x 3.8m)
+      const ch6ArtWorkstation = createFramedArtMesh(texCh6Workstation, 5.8, 3.8, 0.09, true);
+      ch6ArtWorkstation.group.position.set(3.5, 3.60, roomD / 2 - 0.08);
+      ch6ArtWorkstation.group.rotation.y = Math.PI;
+      roomGroup.add(sideWall2, ch6ArtLobby.group, ch6ArtWorkstation.group);
+
+      // Warm directional wall illumination
+      const lobbySpot = new THREE.SpotLight(0xffecd0, 1.8, 16, Math.PI / 3, 0.45);
+      lobbySpot.position.set(2.0, roomH - 0.4, 0);
+      lobbySpot.target = ch6HeroArt.group;
+      roomGroup.add(lobbySpot);
+
+      hallwayGroup.add(roomGroup);
+      return roomGroup;
+    };
+
+    // Instantiate all 6 chambers with spatial references for occlusion culling
     const chamber1Group = buildGrandLivingChamber();
     const chamber2Group = buildVersaceSuiteChamber();
     const chamber3Group = buildSacredSanctumChamber();
     const chamber4Group = buildCorporateReceptionChamber();
+    const chamber5Group = buildRoyalLivingChamber();
+    const chamber6Group = buildCorporateLobbyChamber();
+
+    // Attach Master Hallway Group to Scene (isolated & culled until doors open)
+    scene.add(hallwayGroup);
 
     // --- 9. EXACT TIMED CAMERA WAYPOINTS & PIECEWISE CUBIC HERMITE TRAJECTORY ---
     interface CameraWaypoint {
@@ -5496,54 +4581,83 @@ export default function ThreeMansionEngine() {
     const cameraWaypoints: CameraWaypoint[] = [
       // 0.00: Grand Hall Entrance gazing down the marble gallery
       { t: 0.00, pos: new THREE.Vector3(0, 2.45, 8.0), look: new THREE.Vector3(0, 2.4, -18.0) },
-      // 0.08: Gliding forward along central gallery
-      { t: 0.08, pos: new THREE.Vector3(0, 2.4, -6.0), look: new THREE.Vector3(-1.5, 2.35, -18.0) },
-      // 0.14: Angling toward Portal I archway on the left
-      { t: 0.14, pos: new THREE.Vector3(-2.2, 2.35, -18.5), look: new THREE.Vector3(-8.0, 2.0, -20.0) },
-      // 0.17: Passing THROUGH Portal I doorway arch at X = -4.0
-      { t: 0.17, pos: new THREE.Vector3(-4.4, 2.2, -20.0), look: new THREE.Vector3(-15.0, 1.8, -20.0) },
-      // 0.22: Chamber I Hero View (Grand Living - fully framed 3D lounge, marble, back drapery)
-      { t: 0.22, pos: new THREE.Vector3(-7.8, 1.95, -20.0), look: new THREE.Vector3(-17.5, 1.45, -20.0) },
-      // 0.27: Chamber I Detail View (Close inspection of marble coffee table & sofa)
-      { t: 0.27, pos: new THREE.Vector3(-9.6, 1.60, -20.0), look: new THREE.Vector3(-14.8, 1.05, -20.0) },
-      // 0.33: Gliding backward through Portal I doorway into hallway
-      { t: 0.33, pos: new THREE.Vector3(-4.0, 2.3, -22.0), look: new THREE.Vector3(0, 2.4, -36.0) },
-      // 0.37: Re-entering central gallery, advancing forward
-      { t: 0.37, pos: new THREE.Vector3(0, 2.4, -32.0), look: new THREE.Vector3(1.2, 2.35, -44.0) },
-      // 0.43: Angling toward Portal II archway on the right
-      { t: 0.43, pos: new THREE.Vector3(2.2, 2.35, -43.5), look: new THREE.Vector3(8.0, 2.0, -45.0) },
-      // 0.46: Passing THROUGH Portal II doorway arch at X = +4.0
-      { t: 0.46, pos: new THREE.Vector3(4.4, 2.2, -45.0), look: new THREE.Vector3(15.0, 1.8, -45.0) },
-      // 0.50: Chamber II Hero View (Versace Suite - luxury bed, fluted oak, nightstand, pendant)
-      { t: 0.50, pos: new THREE.Vector3(7.8, 1.95, -45.0), look: new THREE.Vector3(17.5, 1.45, -45.0) },
-      // 0.55: Chamber II Detail View (Close inspection of headboard & nightstand)
-      { t: 0.55, pos: new THREE.Vector3(11.2, 1.70, -45.0), look: new THREE.Vector3(16.5, 1.40, -45.0) },
-      // 0.60: Gliding backward through Portal II doorway into hallway
-      { t: 0.60, pos: new THREE.Vector3(4.0, 2.3, -48.0), look: new THREE.Vector3(0, 2.4, -62.0) },
-      // 0.64: Advancing forward in central gallery toward Portal III
-      { t: 0.64, pos: new THREE.Vector3(0, 2.4, -58.0), look: new THREE.Vector3(-1.2, 2.35, -69.0) },
-      // 0.67: Angling toward Portal III archway on the left
-      { t: 0.67, pos: new THREE.Vector3(-2.2, 2.35, -68.5), look: new THREE.Vector3(-8.0, 2.0, -70.0) },
-      // 0.69: Passing THROUGH Portal III doorway arch at X = -4.0
-      { t: 0.69, pos: new THREE.Vector3(-4.4, 2.2, -70.0), look: new THREE.Vector3(-15.0, 1.8, -70.0) },
-      // 0.72: Chamber III Hero View (Sacred Sanctum - glowing onyx halo, mandir console, diya)
-      { t: 0.72, pos: new THREE.Vector3(-7.8, 1.95, -70.0), look: new THREE.Vector3(-17.5, 1.45, -70.0) },
-      // 0.77: Chamber III Detail View (Close inspection of Ganesha idol & mantra wall)
-      { t: 0.77, pos: new THREE.Vector3(-11.2, 1.70, -70.0), look: new THREE.Vector3(-16.5, 1.40, -70.0) },
-      // 0.82: Gliding backward through Portal III doorway into hallway
-      { t: 0.82, pos: new THREE.Vector3(-4.0, 2.3, -73.0), look: new THREE.Vector3(0, 2.4, -86.0) },
-      // 0.86: Advancing forward in gallery toward Portal IV
-      { t: 0.86, pos: new THREE.Vector3(0, 2.4, -82.0), look: new THREE.Vector3(1.2, 2.35, -94.0) },
-      // 0.90: Angling toward Portal IV archway on the right
-      { t: 0.90, pos: new THREE.Vector3(2.2, 2.35, -93.5), look: new THREE.Vector3(8.0, 2.0, -95.0) },
-      // 0.92: Passing THROUGH Portal IV doorway arch at X = +4.0
-      { t: 0.92, pos: new THREE.Vector3(4.4, 2.2, -95.0), look: new THREE.Vector3(15.0, 1.8, -95.0) },
-      // 0.94: Chamber IV Hero View (Corporate Reception - bronze desk, linear pendant, executive lounge)
-      { t: 0.94, pos: new THREE.Vector3(7.8, 1.95, -95.0), look: new THREE.Vector3(17.5, 1.45, -95.0) },
-      // 0.98: Chamber IV Detail View (Close inspection of reception desk & stag)
-      { t: 0.98, pos: new THREE.Vector3(11.2, 1.70, -95.0), look: new THREE.Vector3(16.5, 1.40, -95.0) },
-      // 1.00: Final gallery destination
-      { t: 1.00, pos: new THREE.Vector3(12.5, 1.85, -95.0), look: new THREE.Vector3(18.0, 1.5, -95.0) },
+      // 0.06: Gliding forward along central gallery
+      { t: 0.06, pos: new THREE.Vector3(0, 2.4, -6.0), look: new THREE.Vector3(-1.5, 2.35, -18.0) },
+      // 0.10: Angling toward Portal I archway on the left
+      { t: 0.10, pos: new THREE.Vector3(-2.2, 2.35, -18.5), look: new THREE.Vector3(-8.0, 2.2, -20.0) },
+      // 0.12: Passing THROUGH Portal I doorway arch at X = -4.0
+      { t: 0.12, pos: new THREE.Vector3(-4.4, 2.25, -20.0), look: new THREE.Vector3(-15.0, 2.6, -20.0) },
+      // 0.15: Chamber I Hero View (Grand Living - monumental 12.2m x 5.8m 4K wall artwork & mirror floor)
+      { t: 0.15, pos: new THREE.Vector3(-7.8, 2.25, -20.0), look: new THREE.Vector3(-20.0, 3.20, -20.0) },
+      // 0.19: Chamber I Panoramic Gallery View
+      { t: 0.19, pos: new THREE.Vector3(-9.2, 2.15, -20.0), look: new THREE.Vector3(-20.0, 3.20, -20.0) },
+      // 0.22: Gliding backward through Portal I doorway into hallway
+      { t: 0.22, pos: new THREE.Vector3(-4.0, 2.3, -22.0), look: new THREE.Vector3(0, 2.4, -36.0) },
+      // 0.25: Re-entering central gallery, advancing forward
+      { t: 0.25, pos: new THREE.Vector3(0, 2.4, -32.0), look: new THREE.Vector3(1.2, 2.35, -44.0) },
+
+      // 0.28: Angling toward Portal II archway on the right
+      { t: 0.28, pos: new THREE.Vector3(2.2, 2.35, -43.5), look: new THREE.Vector3(8.0, 2.2, -45.0) },
+      // 0.30: Passing THROUGH Portal II doorway arch at X = +4.0
+      { t: 0.30, pos: new THREE.Vector3(4.4, 2.25, -45.0), look: new THREE.Vector3(15.0, 2.6, -45.0) },
+      // 0.32: Chamber II Hero View (Versace Suite - monumental 11.6m x 5.6m 4K artwork & oak gallery)
+      { t: 0.32, pos: new THREE.Vector3(7.8, 2.25, -45.0), look: new THREE.Vector3(20.0, 3.20, -45.0) },
+      // 0.36: Chamber II Panoramic Gallery View
+      { t: 0.36, pos: new THREE.Vector3(9.2, 2.15, -45.0), look: new THREE.Vector3(20.0, 3.20, -45.0) },
+      // 0.39: Gliding backward through Portal II doorway into hallway
+      { t: 0.39, pos: new THREE.Vector3(4.0, 2.3, -48.0), look: new THREE.Vector3(0, 2.4, -62.0) },
+      // 0.42: Advancing in central gallery toward Portal III
+      { t: 0.42, pos: new THREE.Vector3(0, 2.4, -58.0), look: new THREE.Vector3(-1.2, 2.35, -69.0) },
+
+      // 0.45: Angling toward Portal III archway on the left
+      { t: 0.45, pos: new THREE.Vector3(-2.2, 2.35, -68.5), look: new THREE.Vector3(-8.0, 2.2, -70.0) },
+      // 0.47: Passing THROUGH Portal III doorway arch at X = -4.0
+      { t: 0.47, pos: new THREE.Vector3(-4.4, 2.25, -70.0), look: new THREE.Vector3(-15.0, 2.6, -70.0) },
+      // 0.49: Chamber III Hero View (Sacred Sanctum - monumental 9.6m x 5.4m artwork & glowing halo)
+      { t: 0.49, pos: new THREE.Vector3(-7.8, 2.25, -70.0), look: new THREE.Vector3(-20.0, 3.20, -70.0) },
+      // 0.53: Chamber III Panoramic Gallery View
+      { t: 0.53, pos: new THREE.Vector3(-9.2, 2.15, -70.0), look: new THREE.Vector3(-20.0, 3.20, -70.0) },
+      // 0.56: Gliding backward through Portal III doorway into hallway
+      { t: 0.56, pos: new THREE.Vector3(-4.0, 2.3, -73.0), look: new THREE.Vector3(0, 2.4, -86.0) },
+      // 0.59: Advancing in central gallery toward Portal IV
+      { t: 0.59, pos: new THREE.Vector3(0, 2.4, -82.0), look: new THREE.Vector3(1.2, 2.35, -94.0) },
+
+      // 0.62: Angling toward Portal IV archway on the right
+      { t: 0.62, pos: new THREE.Vector3(2.2, 2.35, -93.5), look: new THREE.Vector3(8.0, 2.2, -95.0) },
+      // 0.64: Passing THROUGH Portal IV doorway arch at X = +4.0
+      { t: 0.64, pos: new THREE.Vector3(4.4, 2.25, -95.0), look: new THREE.Vector3(15.0, 2.6, -95.0) },
+      // 0.66: Chamber IV Hero View (Executive Boardroom - monumental 12.2m x 5.8m artwork)
+      { t: 0.66, pos: new THREE.Vector3(7.8, 2.25, -95.0), look: new THREE.Vector3(20.0, 3.20, -95.0) },
+      // 0.70: Chamber IV Panoramic Gallery View
+      { t: 0.70, pos: new THREE.Vector3(9.2, 2.15, -95.0), look: new THREE.Vector3(20.0, 3.20, -95.0) },
+      // 0.73: Gliding backward through Portal IV doorway into hallway
+      { t: 0.73, pos: new THREE.Vector3(4.0, 2.3, -98.0), look: new THREE.Vector3(0, 2.4, -111.0) },
+      // 0.76: Advancing in central gallery toward Portal V
+      { t: 0.76, pos: new THREE.Vector3(0, 2.4, -107.0), look: new THREE.Vector3(-1.2, 2.35, -119.0) },
+
+      // 0.79: Angling toward Portal V archway on the left
+      { t: 0.79, pos: new THREE.Vector3(-2.2, 2.35, -118.5), look: new THREE.Vector3(-8.0, 2.2, -120.0) },
+      // 0.81: Passing THROUGH Portal V doorway arch at X = -4.0
+      { t: 0.81, pos: new THREE.Vector3(-4.4, 2.25, -120.0), look: new THREE.Vector3(-15.0, 2.6, -120.0) },
+      // 0.83: Chamber V Hero View (Royal Salon - backlit marble media wall & floating stairs)
+      { t: 0.83, pos: new THREE.Vector3(-7.8, 2.25, -120.0), look: new THREE.Vector3(-20.0, 3.20, -120.0) },
+      // 0.87: Chamber V Panoramic Gallery View
+      { t: 0.87, pos: new THREE.Vector3(-9.2, 2.15, -120.0), look: new THREE.Vector3(-20.0, 3.20, -120.0) },
+      // 0.90: Gliding backward through Portal V doorway into hallway
+      { t: 0.90, pos: new THREE.Vector3(-4.0, 2.3, -123.0), look: new THREE.Vector3(0, 2.4, -136.0) },
+      // 0.93: Advancing in central gallery toward Portal VI
+      { t: 0.93, pos: new THREE.Vector3(0, 2.4, -132.0), look: new THREE.Vector3(1.2, 2.35, -144.0) },
+
+      // 0.95: Angling toward Portal VI archway on the right
+      { t: 0.95, pos: new THREE.Vector3(2.2, 2.35, -143.5), look: new THREE.Vector3(8.0, 2.2, -145.0) },
+      // 0.96: Passing THROUGH Portal VI doorway arch at X = +4.0
+      { t: 0.96, pos: new THREE.Vector3(4.4, 2.25, -145.0), look: new THREE.Vector3(15.0, 2.6, -145.0) },
+      // 0.97: Chamber VI Hero View (Corporate Reception - sculptural brass concierge & chevron timber)
+      { t: 0.97, pos: new THREE.Vector3(7.8, 2.25, -145.0), look: new THREE.Vector3(20.0, 3.20, -145.0) },
+      // 0.99: Chamber VI Panoramic Gallery View
+      { t: 0.99, pos: new THREE.Vector3(9.2, 2.15, -145.0), look: new THREE.Vector3(20.0, 3.20, -145.0) },
+      // 1.00: Final gallery destination inside Chamber VI
+      { t: 1.00, pos: new THREE.Vector3(10.5, 2.15, -145.0), look: new THREE.Vector3(20.0, 3.20, -145.0) },
     ];
 
     const getCameraTrajectory = (progressVal: number) => {
@@ -5579,7 +4693,13 @@ export default function ThreeMansionEngine() {
       honeyFlutedOakTex,
       ...allMuralTextures,
       texGrand, texVersace, texSacred, texCorporate,
-      texGrandDetail, texVersaceDetail, texSacredDetail, texCorporateDetail,
+      texGrandDetail, texVersaceDetail, texSacredDetail, texSacredLeft, texCorporateDetail,
+      texCh1Living, texCh1Dining, texCh1Parlour, texCh1Lounge, texCh1Media,
+      texCh2WoodBed, texCh2Bed1, texCh2Vanity, texCh2Emerald, texCh2Linear,
+      texCh3Classic, texCh3Stone, texCh3Courtyard, texCh3Foyer, texCh3Portal,
+      texCh4Boardroom, texCh4SkyLounge, texCh4Dining, texCh4Vip, texCh4Terrace,
+      texCh5Living, texCh5Lounge, texCh5Staircase, texCh5Minimalist, texCh5Velvet, texCh5Detail, texCh5Left,
+      texCh6Reception, texCh6Chevron, texCh6Foyer, texCh6Lobby, texCh6Workstation, texCh6Detail, texCh6Left,
     ];
 
     const warmUpGPU = () => {
@@ -5592,13 +4712,14 @@ export default function ThreeMansionEngine() {
         } catch (_) {}
       });
 
-      // Temporarily reveal all chambers so compile reaches all geometry & lights
-      [chamber1Group, chamber2Group, chamber3Group, chamber4Group].forEach((g) => {
+      // Temporarily reveal hallwayGroup & all chambers so compile reaches all geometry & lights
+      hallwayGroup.visible = true;
+      [chamber1Group, chamber2Group, chamber3Group, chamber4Group, chamber5Group, chamber6Group].forEach((g) => {
         if (g) g.visible = true;
       });
 
-      // Compile across sample waypoints (hallway, Chamber I, II, III, IV)
-      const sampleWaypoints = [0.0, 0.22, 0.50, 0.72, 0.94];
+      // Compile across sample waypoints (hallway, Chamber I, II, III, IV, V, VI)
+      const sampleWaypoints = [0.0, 0.15, 0.32, 0.49, 0.66, 0.83, 0.97];
       for (const t of sampleWaypoints) {
         const { pos, look } = getCameraTrajectory(t);
         camera.position.copy(pos);
@@ -5612,20 +4733,226 @@ export default function ThreeMansionEngine() {
       camera.lookAt(0, 3.10, 8.2);
       camera.updateMatrixWorld();
 
-      // After GPU compile warmup, hide all chambers while at the entrance door
+      // After GPU compile warmup, fully hide hallwayGroup & all chambers while at the entrance door
+      hallwayGroup.visible = false;
       if (chamber1Group) chamber1Group.visible = false;
       if (chamber2Group) chamber2Group.visible = false;
       if (chamber3Group) chamber3Group.visible = false;
       if (chamber4Group) chamber4Group.visible = false;
+      if (chamber5Group) chamber5Group.visible = false;
+      if (chamber6Group) chamber6Group.visible = false;
     };
 
     warmUpGPU();
 
-    // --- GRAND ENTRANCE DOOR OPENING & SKIP SEQUENCE ---
+    // --- GRAND ENTRANCE DOOR OPENING, PROGRESSIVE LIGHT REVEAL & SKIP SEQUENCE ---
+    const lightingZones = bayLightingFixtures.map((bay) => {
+      const cz = bay.cz;
+      const sconces = sconceLightingFixtures.filter((s) => Math.abs(s.z - cz) <= 6.5);
+      const murals = muralLightingFixtures.filter((m) => Math.abs(m.z - cz) <= 6.5);
+      const arches = archLightingFixtures.filter((a) => Math.abs(a.z - cz) <= 6.5);
+      return {
+        cz,
+        lensMat: bay.lensMat,
+        haloMat: bay.haloMat,
+        coveMat: bay.coveMat,
+        sconces,
+        murals,
+        arches,
+      };
+    });
+
+    const snapAllLightsToFull = () => {
+      sceneStateRef.current.introComplete = true;
+      hemiLight.intensity = 1.45;
+      hemiLight.color.set(0xfffaee);
+      hemiLight.groundColor.set(0xd8c8b2);
+      mainSun.intensity = 1.10;
+      fillSun.intensity = 1.10;
+      ceilingUpLight.intensity = 1.0;
+      corridorCeilingMat.emissiveIntensity = 0.20;
+      luxuryCofferMat.emissiveIntensity = 0.38;
+      artLampHoodMat.emissiveIntensity = 0.75;
+      scene.background = new THREE.Color("#ede5d9");
+      if (scene.fog) {
+        (scene.fog as THREE.Fog).color.set("#e4d8c8");
+        (scene.fog as THREE.Fog).near = 85;
+        (scene.fog as THREE.Fog).far = 185;
+      }
+      waveLight.intensity = 0;
+
+      const dRefs = doorAnimationRef.current;
+      if (dRefs.doorKeyLight) dRefs.doorKeyLight.intensity = 0;
+      if (dRefs.doorUplight) dRefs.doorUplight.intensity = 0;
+      if (dRefs.porticoFill) dRefs.porticoFill.intensity = 0;
+
+      lightingZones.forEach((zone) => {
+        zone.lensMat.emissiveIntensity = 3.4;
+        zone.haloMat.opacity = 0.70;
+        zone.coveMat.emissiveIntensity = 1.5;
+        zone.sconces.forEach((s) => {
+          s.shadeMat.emissiveIntensity = 1.8;
+          s.scallopMat.opacity = 0.70;
+        });
+        zone.murals.forEach((m) => {
+          m.lampMat.emissiveIntensity = 0.75;
+          m.canvasMat.emissiveIntensity = 0.38;
+        });
+        zone.arches.forEach((a) => {
+          a.lensMat.emissiveIntensity = 1.5;
+        });
+      });
+
+      torchereGlowMat.emissiveIntensity = 2.2;
+      backlitWindowMat.emissiveIntensity = 2.2;
+      floorSpillMat.opacity = 0.42;
+      focalLightSpill.intensity = 4.2;
+    };
+
+    const runHallwayLightSequence = () => {
+      if (sceneStateRef.current.isLightingSequence) return;
+      sceneStateRef.current.isLightingSequence = true;
+      setIsLightingSequence(true);
+
+      const humController = isMuted ? null : startElectricHum();
+
+      const tl = gsap.timeline({
+        onComplete: () => {
+          sceneStateRef.current.isLightingSequence = false;
+          sceneStateRef.current.introComplete = true;
+          setIsLightingSequence(false);
+          document.body.classList.remove("cinematic-active");
+          humController?.stop();
+        },
+      });
+      lightingTimelineRef.current = tl;
+
+      // Moving dynamic wave key light starts at entrance and sweeps down corridor
+      waveLight.intensity = 3.6;
+      waveLight.position.set(0, 5.5, 8.0);
+
+      // Smoothly ramp global ambient daylight from cool dim moonlight (0.25) to daytime sunlit brilliance (1.45)
+      tl.to(hemiLight, { intensity: 1.45, duration: 1.15, ease: "power1.inOut" }, 0);
+      const hemiCol = { r: 0x38 / 255, g: 0x46 / 255, b: 0x5c / 255 };
+      tl.to(hemiCol, {
+        r: 0xff / 255, g: 0xfa / 255, b: 0xee / 255,
+        duration: 1.15,
+        ease: "power1.inOut",
+        onUpdate: () => hemiLight.color.setRGB(hemiCol.r, hemiCol.g, hemiCol.b),
+      }, 0);
+      const hemiGnd = { r: 0x18 / 255, g: 0x1c / 255, b: 0x26 / 255 };
+      tl.to(hemiGnd, {
+        r: 0xd8 / 255, g: 0xc8 / 255, b: 0xb2 / 255,
+        duration: 1.15,
+        ease: "power1.inOut",
+        onUpdate: () => hemiLight.groundColor.setRGB(hemiGnd.r, hemiGnd.g, hemiGnd.b),
+      }, 0);
+
+      // Ramp balanced symmetrical suns together
+      tl.to(mainSun, { intensity: 1.10, duration: 1.15, ease: "power1.inOut" }, 0);
+      tl.to(fillSun, { intensity: 1.10, duration: 1.15, ease: "power1.inOut" }, 0);
+      tl.to(ceilingUpLight, { intensity: 1.0, duration: 1.15, ease: "power1.inOut" }, 0);
+      tl.to(corridorCeilingMat, { emissiveIntensity: 0.20, duration: 1.15, ease: "power1.inOut" }, 0);
+      tl.to(luxuryCofferMat, { emissiveIntensity: 0.38, duration: 1.15, ease: "power1.inOut" }, 0);
+      tl.to(artLampHoodMat, { emissiveIntensity: 0.75, duration: 1.15, ease: "power1.inOut" }, 0);
+
+      // Smoothly transition background and fog to warm sunlit mansion atmosphere
+      const bgCol = { r: 0x0e / 255, g: 0x12 / 255, b: 0x1a / 255 };
+      tl.to(bgCol, {
+        r: 0xed / 255, g: 0xe5 / 255, b: 0xd9 / 255,
+        duration: 1.15,
+        ease: "power1.inOut",
+        onUpdate: () => {
+          scene.background = new THREE.Color(bgCol.r, bgCol.g, bgCol.b);
+        },
+      }, 0);
+
+      if (scene.fog) {
+        const fogCol = { r: 0x0e / 255, g: 0x12 / 255, b: 0x1a / 255 };
+        tl.to(fogCol, {
+          r: 0xe4 / 255, g: 0xd8 / 255, b: 0xc8 / 255,
+          duration: 1.15,
+          ease: "power1.inOut",
+          onUpdate: () => {
+            if (scene.fog) (scene.fog as THREE.Fog).color.setRGB(fogCol.r, fogCol.g, fogCol.b);
+          },
+        }, 0);
+        tl.to(scene.fog, { near: 85, far: 185, duration: 1.15, ease: "power1.inOut" }, 0);
+      }
+
+      // Dynamic Wave Key Light follows wave down corridor, throwing dynamic specular reflections across the floor
+      tl.to(waveLight.position, {
+        z: -168,
+        duration: 1.15,
+        ease: "power1.inOut",
+      }, 0);
+
+      // Sequential light-up animation across each zone (staggered by 0.065s for swift dynamic wave)
+      const zoneStagger = 0.065;
+      lightingZones.forEach((zone, idx) => {
+        const tStart = idx * zoneStagger;
+
+        // Relay click audio with upward pitch progression as wave travels down corridor
+        tl.call(() => {
+          playRelayClick(1.0 + (idx / 14) * 0.45, 0.03 + (idx / 14) * 0.035);
+        }, [], tStart);
+
+        // 1. Coffer Downlight Lens: micro-strike flicker then warm surge
+        tl.to(zone.lensMat, { emissiveIntensity: 2.4, duration: 0.02, ease: "power3.in" }, tStart);
+        tl.to(zone.lensMat, { emissiveIntensity: 1.3, duration: 0.025, ease: "power1.out" }, tStart + 0.02);
+        tl.to(zone.lensMat, { emissiveIntensity: 3.4, duration: 0.10, ease: "power2.out" }, tStart + 0.045);
+
+        // 2. Coffer Downlight Halo: soft radial bloom
+        tl.to(zone.haloMat, { opacity: 0.70, duration: 0.14, ease: "power2.out" }, tStart + 0.02);
+
+        // 3. Cove Lighting: smooth warm architectural surge (both left and right cove channels ignite together)
+        tl.to(zone.coveMat, { emissiveIntensity: 1.5, duration: 0.16, ease: "power2.out" }, tStart + 0.015);
+
+        // 4. Sconces in this zone (symmetrically paired left and right)
+        zone.sconces.forEach((sconce) => {
+          tl.to(sconce.shadeMat, { emissiveIntensity: 2.2, duration: 0.02, ease: "power3.in" }, tStart);
+          tl.to(sconce.shadeMat, { emissiveIntensity: 1.1, duration: 0.025, ease: "power1.out" }, tStart + 0.02);
+          tl.to(sconce.shadeMat, { emissiveIntensity: 1.8, duration: 0.10, ease: "power2.out" }, tStart + 0.045);
+          tl.to(sconce.scallopMat, { opacity: 0.70, duration: 0.16, ease: "power2.out" }, tStart + 0.015);
+        });
+
+        // 5. Murals and picture lamps in this zone (symmetrically paired left and right)
+        zone.murals.forEach((mural) => {
+          tl.to(mural.lampMat, { emissiveIntensity: 0.75, duration: 0.14, ease: "power2.out" }, tStart + 0.025);
+          tl.to(mural.canvasMat, { emissiveIntensity: 0.38, duration: 0.16, ease: "power2.out" }, tStart + 0.025);
+        });
+
+        // 6. Arches in this zone
+        zone.arches.forEach((arch) => {
+          tl.to(arch.lensMat, { emissiveIntensity: 1.5, duration: 0.14, ease: "power2.out" }, tStart + 0.02);
+        });
+      });
+
+      // GRAND TERMINUS CLIMAX: Far-End Portal Ignites with Full Resonance Chime
+      const terminusTime = 14 * zoneStagger + 0.04;
+      tl.call(() => {
+        playFullResonanceChime();
+      }, [], terminusTime);
+
+      tl.to(torchereGlowMat, { emissiveIntensity: 2.2, duration: 0.22, ease: "power2.out" }, terminusTime);
+      tl.to(backlitWindowMat, { emissiveIntensity: 2.2, duration: 0.25, ease: "power2.out" }, terminusTime);
+      tl.to(floorSpillMat, { opacity: 0.42, duration: 0.25, ease: "power2.out" }, terminusTime);
+      tl.to(focalLightSpill, { intensity: 4.2, duration: 0.25, ease: "power2.out" }, terminusTime);
+
+      // Fade out dynamic wave light once reveal is complete
+      tl.to(waveLight, { intensity: 0, duration: 0.20, ease: "power2.in" }, terminusTime + 0.06);
+    };
+
     const openDoorSequence = () => {
       if (sceneStateRef.current.doorState !== "ready") return;
       sceneStateRef.current.doorState = "opening";
       setDoorState("opening");
+
+      // Hide custom cursor during cinematic intro sequence to avoid stray floating dot
+      document.body.classList.add("cinematic-active");
+
+      // 1. Immediately fade out the door UI overlay (title, medallion, button, tagline)
+      setDoorUIFading(true);
 
       // Auto-unmute on explicit enter click and initiate audio experience
       setIsMuted(false);
@@ -5636,87 +4963,216 @@ export default function ThreeMansionEngine() {
       const dRefs = doorAnimationRef.current;
       const tl = gsap.timeline({
         onComplete: () => {
-          sceneStateRef.current.doorState = "opened";
-          sceneStateRef.current.currentProgress = 0;
-          sceneStateRef.current.targetProgress = 0;
-          setDoorState("opened");
-          setIsDoorOpen(true);
-          if (dRefs.doorGroup) {
-            dRefs.doorGroup.visible = false;
+          if (sceneStateRef.current.doorState === "opening") {
+            sceneStateRef.current.doorState = "opened";
+            sceneStateRef.current.currentProgress = 0;
+            sceneStateRef.current.targetProgress = 0;
+            setDoorState("opened");
+            setIsDoorOpen(true);
+            if (dRefs.doorGroup) {
+              dRefs.doorGroup.visible = false;
+            }
+            // Trigger progressive lighting reveal down the hallway
+            runHallwayLightSequence();
           }
         },
       });
+      doorTimelineRef.current = tl;
 
-      // 1. Both door handles rotate downward (unlatch click) 0s -> 0.35s
+      // 1b. Complete removal of door UI overlay from DOM/rendering before hallway starts
+      tl.call(() => {
+        setDoorUIHidden(true);
+      }, [], 0.25);
+
+      // 2. Both door handles rotate downward (unlatch click) 0s -> 0.22s
       if (dRefs.leftHandle && dRefs.rightHandle) {
-        tl.to(dRefs.leftHandle.rotation, { z: -0.32, duration: 0.32, ease: "power2.inOut" }, 0);
-        tl.to(dRefs.rightHandle.rotation, { z: 0.32, duration: 0.32, ease: "power2.inOut" }, 0);
+        tl.to(dRefs.leftHandle.rotation, { z: -0.32, duration: 0.22, ease: "power2.inOut" }, 0);
+        tl.to(dRefs.rightHandle.rotation, { z: 0.32, duration: 0.22, ease: "power2.inOut" }, 0);
       }
 
-      // 2. Both door panels swing open inward into the hallway 0.3s -> 2.3s
+      // 3. Both door panels swing open inward into the hallway 0.20s -> 1.40s
       if (dRefs.leftPivot && dRefs.rightPivot) {
-        tl.to(dRefs.leftPivot.rotation, { y: -Math.PI / 2.1, duration: 2.0, ease: "power3.inOut" }, 0.3);
-        tl.to(dRefs.rightPivot.rotation, { y: Math.PI / 2.1, duration: 2.0, ease: "power3.inOut" }, 0.3);
+        tl.to(dRefs.leftPivot.rotation, { y: -Math.PI / 2.1, duration: 1.20, ease: "power2.inOut" }, 0.20);
+        tl.to(dRefs.rightPivot.rotation, { y: Math.PI / 2.1, duration: 1.20, ease: "power2.inOut" }, 0.20);
       }
 
-      // 3. Volumetric warm golden light flood bursts through opening doors 0.3s -> 2.2s
-      if (dRefs.lightFlood) {
-        const mat = dRefs.lightFlood.material as THREE.MeshBasicMaterial;
-        tl.to(mat, { opacity: 0.85, duration: 1.1, ease: "power2.in" }, 0.3);
-        tl.to(dRefs.lightFlood.scale, { x: 3.5, duration: 1.5, ease: "power2.out" }, 0.3);
-        tl.to(mat, { opacity: 0.0, duration: 0.6, ease: "power2.out" }, 1.6);
+      // 3b. Crack slit, glow and floor spill fade out immediately as doors part (0.20s -> 0.40s)
+      if (dRefs.crackSlit) {
+        tl.to((dRefs.crackSlit.material as THREE.MeshBasicMaterial), { opacity: 0.0, duration: 0.20, ease: "power2.out" }, 0.20);
+      }
+      if (dRefs.crackGlow) {
+        tl.to((dRefs.crackGlow.material as THREE.MeshBasicMaterial), { opacity: 0.0, duration: 0.20, ease: "power2.out" }, 0.20);
+      }
+      if (dRefs.floorSpill) {
+        tl.to((dRefs.floorSpill.material as THREE.MeshBasicMaterial), { opacity: 0.0, duration: 0.25, ease: "power2.out" }, 0.20);
       }
 
-      // 3b. Occluder behind doors collapses as doors part
+      // 3c. Dark occluder behind doors dissolves as doors part (0.20s -> 0.55s)
       if (dRefs.doorBacker) {
         const bMat = dRefs.doorBacker.material as THREE.MeshBasicMaterial;
-        tl.to(dRefs.doorBacker.scale, { x: 0.001, duration: 1.2, ease: "power2.inOut" }, 0.3);
-        tl.to(bMat, { opacity: 0.0, duration: 0.7, ease: "power2.out" }, 0.5);
+        tl.to(dRefs.doorBacker.scale, { x: 0.001, duration: 0.35, ease: "power2.inOut" }, 0.20);
+        tl.to(bMat, { opacity: 0.0, duration: 0.35, ease: "power2.out" }, 0.20);
       }
 
-      // 4. Camera pushes through doorway into hallway 0.75s -> 2.45s
+      // 4. Reveal interior hallway meshes at t = 0.30s so moonlit architecture is seen through parting doors
+      tl.call(() => {
+        hallwayGroup.visible = true;
+      }, [], 0.30);
+
+      // 5. Camera pushes forward through doorway into hallway 0.25s -> 1.45s (smooth glide)
       tl.to(dRefs.cameraPos, {
         y: 2.45,
         z: 8.0,
-        duration: 1.7,
+        duration: 1.20,
         ease: "power2.inOut",
-      }, 0.75);
+      }, 0.25);
 
       tl.to(dRefs.cameraLook, {
         y: 2.40,
         z: -18.0,
-        duration: 1.7,
+        duration: 1.20,
         ease: "power2.inOut",
-      }, 0.75);
+      }, 0.25);
+
+      // 6. Cross-fade exterior sunlit ambiance to cool dim moonlit interior fill (0.25s -> 1.15s)
+      // Maintains visible moonlight geometry (columns, floor sheen, ceiling silhouette) — NEVER pure black!
+      tl.to(hemiLight, { intensity: 0.25, duration: 0.90, ease: "power2.inOut" }, 0.25);
+      tl.to(mainSun, { intensity: 0.0, duration: 0.70, ease: "power2.inOut" }, 0.25);
+      tl.to(fillSun, { intensity: 0.0, duration: 0.70, ease: "power2.inOut" }, 0.25);
+      tl.to(ceilingUpLight, { intensity: 0.0, duration: 0.70, ease: "power2.inOut" }, 0.25);
+
+      if (dRefs.doorKeyLight) {
+        tl.to(dRefs.doorKeyLight, { intensity: 0, duration: 0.70, ease: "power2.inOut" }, 0.25);
+      }
+      if (dRefs.doorUplight) {
+        tl.to(dRefs.doorUplight, { intensity: 0, duration: 0.70, ease: "power2.inOut" }, 0.25);
+      }
+      if (dRefs.porticoFill) {
+        tl.to(dRefs.porticoFill, { intensity: 0, duration: 0.70, ease: "power2.inOut" }, 0.25);
+      }
+
+      // Smooth color transition to cool moonlit slate tones
+      const hemiDimCol = { r: 1.0, g: 0.98, b: 0.94 };
+      tl.to(hemiDimCol, {
+        r: 0x38 / 255, g: 0x46 / 255, b: 0x5c / 255,
+        duration: 0.90,
+        ease: "power2.inOut",
+        onUpdate: () => hemiLight.color.setRGB(hemiDimCol.r, hemiDimCol.g, hemiDimCol.b),
+      }, 0.25);
+      const hemiDimGnd = { r: 0.85, g: 0.78, b: 0.70 };
+      tl.to(hemiDimGnd, {
+        r: 0x18 / 255, g: 0x1c / 255, b: 0x26 / 255,
+        duration: 0.90,
+        ease: "power2.inOut",
+        onUpdate: () => hemiLight.groundColor.setRGB(hemiDimGnd.r, hemiDimGnd.g, hemiDimGnd.b),
+      }, 0.25);
+
+      const bgDimCol = { r: 0xed / 255, g: 0xe5 / 255, b: 0xd9 / 255 };
+      tl.to(bgDimCol, {
+        r: 0x0e / 255, g: 0x12 / 255, b: 0x1a / 255,
+        duration: 0.90,
+        ease: "power2.inOut",
+        onUpdate: () => {
+          scene.background = new THREE.Color(bgDimCol.r, bgDimCol.g, bgDimCol.b);
+        },
+      }, 0.25);
+
+      if (scene.fog) {
+        const fogDimCol = { r: 0xe4 / 255, g: 0xd8 / 255, b: 0xc8 / 255 };
+        tl.to(fogDimCol, {
+          r: 0x0e / 255, g: 0x12 / 255, b: 0x1a / 255,
+          duration: 0.90,
+          ease: "power2.inOut",
+          onUpdate: () => {
+            if (scene.fog) (scene.fog as THREE.Fog).color.setRGB(fogDimCol.r, fogDimCol.g, fogDimCol.b);
+          },
+        }, 0.25);
+        tl.to(scene.fog, { near: 35, far: 145, duration: 0.90, ease: "power2.inOut" }, 0.25);
+      }
+
+      // 7. Door meshes hidden once camera has fully passed through into the hallway (t = 1.45s)
+      tl.call(() => {
+        if (dRefs.doorGroup) {
+          dRefs.doorGroup.visible = false;
+        }
+      }, [], 1.45);
+
+      // 8. Crisp cinematic breath in the moonlit hallway (1.45s -> 1.60s, exactly 0.15s)
+      // Camera is settled at (0, 2.45, 8.0). Architecture (columns, floor, ceiling silhouette)
+      // is faintly and beautifully visible in cool dim moonlight. No pure black void!
+      tl.to({}, { duration: 0.15 }, 1.45);
     };
 
     const skipDoorSequence = () => {
+      if (doorTimelineRef.current) {
+        doorTimelineRef.current.kill();
+      }
+      if (lightingTimelineRef.current) {
+        lightingTimelineRef.current.kill();
+      }
+      document.body.classList.remove("cinematic-active");
       const dRefs = doorAnimationRef.current;
       gsap.killTweensOf(dRefs.cameraPos);
       gsap.killTweensOf(dRefs.cameraLook);
+      gsap.killTweensOf(sceneStateRef.current);
       if (dRefs.leftPivot) gsap.killTweensOf(dRefs.leftPivot.rotation);
       if (dRefs.rightPivot) gsap.killTweensOf(dRefs.rightPivot.rotation);
       if (dRefs.leftHandle) gsap.killTweensOf(dRefs.leftHandle.rotation);
       if (dRefs.rightHandle) gsap.killTweensOf(dRefs.rightHandle.rotation);
       if (dRefs.lightFlood) gsap.killTweensOf(dRefs.lightFlood.material as any);
+      if (dRefs.crackSlit) {
+        gsap.killTweensOf(dRefs.crackSlit.material as any);
+        dRefs.crackSlit.visible = false;
+      }
+      if (dRefs.crackGlow) {
+        gsap.killTweensOf(dRefs.crackGlow.material as any);
+        dRefs.crackGlow.visible = false;
+      }
       if (dRefs.doorBacker) {
         gsap.killTweensOf(dRefs.doorBacker.scale);
         gsap.killTweensOf(dRefs.doorBacker.material as any);
         dRefs.doorBacker.visible = false;
       }
+      if (dRefs.doorKeyLight) gsap.killTweensOf(dRefs.doorKeyLight);
+      if (dRefs.doorUplight) gsap.killTweensOf(dRefs.doorUplight);
+      if (dRefs.porticoFill) gsap.killTweensOf(dRefs.porticoFill);
+      gsap.killTweensOf(mainSun);
+      gsap.killTweensOf(fillSun);
+      gsap.killTweensOf(ceilingUpLight);
+      gsap.killTweensOf(hemiLight);
+      gsap.killTweensOf(corridorCeilingMat);
+      gsap.killTweensOf(luxuryCofferMat);
+      gsap.killTweensOf(artLampHoodMat);
+      gsap.killTweensOf(torchereGlowMat);
+      gsap.killTweensOf(backlitWindowMat);
+      gsap.killTweensOf(floorSpillMat);
+      gsap.killTweensOf(focalLightSpill);
+      gsap.killTweensOf(waveLight);
+      gsap.killTweensOf(waveLight.position);
+
+      sceneStateRef.current.introComplete = true;
 
       dRefs.cameraPos.set(0, 2.45, 8.0);
       dRefs.cameraLook.set(0, 2.4, -18.0);
+
+      hallwayGroup.visible = true;
 
       if (dRefs.doorGroup) {
         dRefs.doorGroup.visible = false;
       }
 
+      snapAllLightsToFull();
+
+      setDoorUIFading(true);
+      setDoorUIHidden(true);
+
       sceneStateRef.current.doorState = "opened";
       sceneStateRef.current.currentProgress = 0;
       sceneStateRef.current.targetProgress = 0;
+      sceneStateRef.current.isLightingSequence = false;
       setDoorState("opened");
       setIsDoorOpen(true);
+      setIsLightingSequence(false);
     };
 
     triggerOpenDoorRef.current = openDoorSequence;
@@ -5724,7 +5180,7 @@ export default function ThreeMansionEngine() {
 
     // --- 11. SCROLL CAPTURE & MOMENTUM INTERACTION ---
     const handleWheel = (e: WheelEvent) => {
-      if (sceneStateRef.current.doorState !== "opened") {
+      if (sceneStateRef.current.doorState !== "opened" || sceneStateRef.current.isLightingSequence) {
         if (e.cancelable) e.preventDefault();
         return;
       }
@@ -5752,7 +5208,7 @@ export default function ThreeMansionEngine() {
 
     let touchStartY = 0;
     const handleTouchStart = (e: TouchEvent) => {
-      if (sceneStateRef.current.doorState !== "opened") return;
+      if (sceneStateRef.current.doorState !== "opened" || sceneStateRef.current.isLightingSequence) return;
       if (e.touches.length > 0) {
         touchStartY = e.touches[0].clientY;
       }
@@ -5762,7 +5218,7 @@ export default function ThreeMansionEngine() {
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (sceneStateRef.current.doorState !== "opened") {
+      if (sceneStateRef.current.doorState !== "opened" || sceneStateRef.current.isLightingSequence) {
         if (e.cancelable) e.preventDefault();
         return;
       }
@@ -5790,7 +5246,7 @@ export default function ThreeMansionEngine() {
         triggerOpenDoorRef.current();
         return;
       }
-      if (sceneStateRef.current.doorState !== "opened") return;
+      if (sceneStateRef.current.doorState !== "opened" || sceneStateRef.current.isLightingSequence) return;
       isPointerDown = true;
       lastPointerY = e.clientY;
       const state = sceneStateRef.current;
@@ -5819,7 +5275,7 @@ export default function ThreeMansionEngine() {
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (sceneStateRef.current.doorState !== "opened") {
+      if (sceneStateRef.current.doorState !== "opened" || sceneStateRef.current.isLightingSequence) {
         if (e.key === "Enter" || e.key === " ") {
           if (sceneStateRef.current.doorState === "ready") {
             triggerOpenDoorRef.current();
@@ -5863,18 +5319,55 @@ export default function ThreeMansionEngine() {
 
     // Development / automated inspection helper
     (window as any).__setMansionProgress = (prog: number) => {
+      if (doorTimelineRef.current) {
+        doorTimelineRef.current.kill();
+      }
+      if (lightingTimelineRef.current) {
+        lightingTimelineRef.current.kill();
+      }
       const state = sceneStateRef.current;
       gsap.killTweensOf(state);
+      const dRefs = doorAnimationRef.current;
+      gsap.killTweensOf(dRefs.cameraPos);
+      gsap.killTweensOf(dRefs.cameraLook);
       state.isSnapping = false;
       state.doorState = "opened";
+      state.isLightingSequence = false;
+      setIsLightingSequence(false);
       if (doorAnimationRef.current.doorGroup) {
         doorAnimationRef.current.doorGroup.visible = false;
       }
+      hallwayGroup.visible = true;
+      snapAllLightsToFull();
       setIsDoorOpen(true);
       setDoorState("opened");
       state.targetProgress = THREE.MathUtils.clamp(prog, 0, 1);
       state.currentProgress = THREE.MathUtils.clamp(prog, 0, 1);
       state.lastScrollTime = Date.now() + 60000; // prevent immediate snap during inspection
+    };
+
+    (window as any).__triggerOpenDoor = () => triggerOpenDoorRef.current();
+    (window as any).__triggerSkipDoor = () => triggerSkipDoorRef.current();
+    (window as any).__getLightingState = () => ({
+      isLightingSequence: sceneStateRef.current.isLightingSequence,
+      doorState: sceneStateRef.current.doorState,
+      introComplete: sceneStateRef.current.introComplete,
+      currentProgress: sceneStateRef.current.currentProgress,
+      targetProgress: sceneStateRef.current.targetProgress,
+      mainSunIntensity: mainSun.intensity,
+      fillSunIntensity: fillSun.intensity,
+      ceilingUpLightIntensity: ceilingUpLight.intensity,
+      hemiLightIntensity: hemiLight.intensity,
+      doorTimelineProgress: doorTimelineRef.current ? doorTimelineRef.current.progress() : 0,
+      lightingTimelineProgress: lightingTimelineRef.current ? lightingTimelineRef.current.progress() : 0,
+    });
+
+    (window as any).__switchChamberArtwork = (chamberId: string, artworkId: string) => {
+      const list = EXHIBITION_CATALOG[chamberId] || [];
+      const art = list.find((a) => a.id === artworkId);
+      if (art) {
+        handleSelectArtwork(chamberId, art);
+      }
     };
 
     // --- 11. CINEMATIC POST-PROCESSING PIPELINE ---
@@ -5999,11 +5492,16 @@ export default function ThreeMansionEngine() {
       if (state.doorState !== "opened") {
         const dRefs = doorAnimationRef.current;
 
-        // Spatial culling: hide all 4 chambers while at the door to save 1,300 meshes
+        // Spatial culling: hide hallwayGroup and all 6 chambers while at the door
+        if (state.doorState === "loading" || state.doorState === "ready") {
+          if (hallwayGroup.visible) hallwayGroup.visible = false;
+        }
         if (chamber1Group && chamber1Group.visible) chamber1Group.visible = false;
         if (chamber2Group && chamber2Group.visible) chamber2Group.visible = false;
         if (chamber3Group && chamber3Group.visible) chamber3Group.visible = false;
         if (chamber4Group && chamber4Group.visible) chamber4Group.visible = false;
+        if (chamber5Group && chamber5Group.visible) chamber5Group.visible = false;
+        if (chamber6Group && chamber6Group.visible) chamber6Group.visible = false;
 
         // Subtle ambient breathing pulse on the door crack while closed
         if (state.doorState === "loading" || state.doorState === "ready") {
@@ -6030,15 +5528,19 @@ export default function ThreeMansionEngine() {
         const p = Math.max(0, Math.min(1, state.currentProgress));
 
         // Spatial chamber visibility culling: only keep chamber visible when near its portal
-        const c1Vis = p >= 0.08 && p <= 0.38;
-        const c2Vis = p >= 0.35 && p <= 0.62;
-        const c3Vis = p >= 0.58 && p <= 0.85;
-        const c4Vis = p >= 0.80 && p <= 1.00;
+        const c1Vis = p >= 0.05 && p <= 0.25;
+        const c2Vis = p >= 0.22 && p <= 0.42;
+        const c3Vis = p >= 0.39 && p <= 0.59;
+        const c4Vis = p >= 0.56 && p <= 0.76;
+        const c5Vis = p >= 0.73 && p <= 0.91;
+        const c6Vis = p >= 0.88 && p <= 1.00;
 
         if (chamber1Group && chamber1Group.visible !== c1Vis) chamber1Group.visible = c1Vis;
         if (chamber2Group && chamber2Group.visible !== c2Vis) chamber2Group.visible = c2Vis;
         if (chamber3Group && chamber3Group.visible !== c3Vis) chamber3Group.visible = c3Vis;
         if (chamber4Group && chamber4Group.visible !== c4Vis) chamber4Group.visible = c4Vis;
+        if (chamber5Group && chamber5Group.visible !== c5Vis) chamber5Group.visible = c5Vis;
+        if (chamber6Group && chamber6Group.visible !== c6Vis) chamber6Group.visible = c6Vis;
 
         // Direct DOM progress bar and indicator updates - 0 React re-renders during 60FPS scroll
         const pct = Math.round(p * 100);
@@ -6061,21 +5563,17 @@ export default function ThreeMansionEngine() {
         // Chamber ambient animation culling (lights and geometry remain stable so GLSL program cache is never invalidated)
 
         // --- CHAMBER-SPECIFIC AMBIENT ANIMATIONS (SPATIALLY CULLED, ZERO CPU BUFFER RE-UPLOADS) ---
-        if (p >= 0.12 && p <= 0.35 && grandDustPoints) {
+        if (p >= 0.10 && p <= 0.22 && grandDustPoints) {
           // Chamber I: Gentle dust motes in living room window wash (pure GPU transform)
           grandDustPoints.rotation.y = elapsed * 0.04;
           grandDustPoints.position.y = Math.sin(elapsed * 0.5) * 0.04;
-        } else if (p >= 0.38 && p <= 0.60) {
-          // Chamber II: Subtle pendant sway & bed spotlight dust motes
-          if (versacePendantGroup) {
-            versacePendantGroup.rotation.z = Math.sin(elapsed * 0.8) * 0.012;
-            versacePendantGroup.rotation.x = Math.cos(elapsed * 0.6) * 0.008;
-          }
+        } else if (p >= 0.27 && p <= 0.39) {
+          // Chamber II: Ambient gallery dust motes
           if (versaceDustPoints) {
             versaceDustPoints.rotation.y = elapsed * 0.035;
             versaceDustPoints.position.y = Math.sin(elapsed * 0.4) * 0.03;
           }
-        } else if (p >= 0.63 && p <= 0.83) {
+        } else if (p >= 0.44 && p <= 0.56) {
           // Chamber III: Sacred Sanctum diya flame flicker & incense smoke ascent
           const flameNoise = Math.sin(elapsed * 14) * Math.cos(elapsed * 9);
           if (sanctumDiyaLight) {
@@ -6092,18 +5590,17 @@ export default function ThreeMansionEngine() {
             incenseParticles.rotation.y = elapsed * 0.05;
             incenseParticles.position.y = Math.sin(elapsed * 0.7) * 0.03;
           }
-        } else if (p >= 0.88 && p <= 1.0) {
-          // Chamber IV: Corporate Reception subtle kinetic balance toy oscillation
-          if (corporateKineticToy) {
-            corporateKineticToy.rotation.z = Math.sin(elapsed * 1.8) * 0.12;
-            corporateKineticToy.rotation.x = Math.cos(elapsed * 1.3) * 0.04;
-          }
         }
 
         // Far-End Focal Masterpiece Ambient Animation (Hallway view)
         if (
           focalSculptureGroup &&
-          (p < 0.15 || (p > 0.33 && p < 0.45) || (p > 0.60 && p < 0.68) || (p > 0.82 && p < 0.90))
+          (p < 0.10 ||
+            (p > 0.22 && p < 0.28) ||
+            (p > 0.39 && p < 0.45) ||
+            (p > 0.56 && p < 0.62) ||
+            (p > 0.73 && p < 0.79) ||
+            (p > 0.90 && p < 0.95))
         ) {
           focalSculptureGroup.rotation.y = elapsed * 0.18;
           focalSculptureGroup.rotation.x = Math.sin(elapsed * 0.4) * 0.1;
@@ -6112,7 +5609,7 @@ export default function ThreeMansionEngine() {
         // Auto-Snap Detection
         if (!state.isSnapping && Date.now() - state.lastScrollTime > 350) {
           for (const ch of CHAMBER_DATA) {
-            if (Math.abs(state.targetProgress - ch.heroProgress) < 0.038) {
+            if (Math.abs(state.targetProgress - ch.heroProgress) < 0.032) {
               state.isSnapping = true;
               gsap.to(state, {
                 targetProgress: ch.heroProgress,
@@ -6132,9 +5629,9 @@ export default function ThreeMansionEngine() {
         let opacity = 0;
         for (const ch of CHAMBER_DATA) {
           const dist = Math.abs(p - ch.heroProgress);
-          if (dist <= 0.055) {
+          if (dist <= 0.045) {
             matchingChamber = ch;
-            opacity = Math.max(0, 1 - dist / 0.055);
+            opacity = Math.max(0, 1 - dist / 0.045);
             break;
           }
         }
@@ -6168,6 +5665,8 @@ export default function ThreeMansionEngine() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("resize", handleResize);
       delete (window as any).__setMansionProgress;
+      delete (window as any).__switchChamberArtwork;
+      document.body.classList.remove("cinematic-active");
 
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
@@ -6215,8 +5714,12 @@ export default function ThreeMansionEngine() {
       </header>
 
       {/* 4.5 GRAND ENTRANCE DOOR OPENING SEQUENCE OVERLAY */}
-      {!isDoorOpen && (
-        <div className="absolute inset-0 z-30 pointer-events-none flex flex-col justify-between p-8 md:p-14 animate-fadeIn select-none">
+      {!doorUIHidden && !isDoorOpen && (
+        <div
+          className={`absolute inset-0 z-30 pointer-events-none flex flex-col justify-between p-8 md:p-14 select-none transition-opacity duration-300 ease-out ${
+            doorUIFading ? "opacity-0 pointer-events-none" : "opacity-100 animate-fadeIn"
+          }`}
+        >
           {/* Center Call To Action */}
           <div className="flex flex-col items-center justify-center my-auto text-center pointer-events-auto">
             {/* Luxury Estate Badge */}
@@ -6226,7 +5729,7 @@ export default function ThreeMansionEngine() {
                 Grand Private Estate
               </span>
             </div>
-            {/* Animated Brass Door Knocker / Handle Icon */}
+            {/* Animated Brass Door Knocker / Medallion */}
             <div
               onClick={() => {
                 if (doorState === "ready") triggerOpenDoorRef.current();
@@ -6235,13 +5738,14 @@ export default function ThreeMansionEngine() {
                 doorState === "ready" ? "cursor-pointer" : "cursor-default"
               }`}
             >
-              <div className="w-18 h-18 md:w-20 md:h-20 rounded-full border border-[#b8975a]/50 flex items-center justify-center bg-[#191411]/90 shadow-[0_0_35px_rgba(184,151,90,0.35)] group-hover:shadow-[0_0_55px_rgba(229,195,140,0.7)] group-hover:border-[#e5c38c] transition-all duration-500">
-                <DoorClosed
-                  size={28}
-                  className={`text-[#e5c38c] transition-transform duration-500 ${
-                    doorState === "ready" ? "group-hover:scale-110 animate-pulse" : "opacity-60"
-                  }`}
-                />
+              <div className="w-20 h-20 md:w-22 md:h-22 rounded-full border-2 border-[#b8975a]/60 flex flex-col items-center justify-center bg-[#191411]/95 shadow-[0_0_35px_rgba(184,151,90,0.45)] group-hover:shadow-[0_0_60px_rgba(229,195,140,0.85)] group-hover:border-[#e5c38c] transition-all duration-500">
+                <div className="w-14 h-14 rounded-full border border-[#e5c38c]/40 flex items-center justify-center relative">
+                  <span className="font-serif text-[#e5c38c] text-lg font-bold tracking-widest group-hover:scale-110 transition-transform">
+                    GL
+                  </span>
+                  {/* Subtle knocker ring at bottom */}
+                  <div className="absolute -bottom-1 w-7 h-7 rounded-full border-2 border-[#e5c38c]/70 group-hover:translate-y-1 transition-transform" />
+                </div>
               </div>
               {doorState === "ready" && (
                 <div
@@ -6353,34 +5857,52 @@ export default function ThreeMansionEngine() {
 
           {/* Interactive Curated Wall Artwork Strip */}
           {EXHIBITION_CATALOG[activeChamber.id] && (
-            <div className="pointer-events-auto bg-[#181412]/95 border border-[#b8975a]/30 rounded-2xl p-3 shadow-2xl max-w-md">
+            <div className="pointer-events-auto bg-[#181412]/95 border border-[#b8975a]/40 rounded-2xl p-3.5 shadow-2xl max-w-md">
               <div className="flex items-center justify-between mb-2.5 text-[10px] font-mono tracking-[0.25em] uppercase text-[#e5c38c]">
                 <span className="flex items-center space-x-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#e5c38c] animate-pulse" />
                   <span>Curated Wall Installations</span>
                 </span>
-                <span className="text-white/50">5 Works · Tap to Inspect</span>
+                <span className="text-white/60">Click to Change Wall Art</span>
               </div>
               <div className="grid grid-cols-5 gap-2">
-                {EXHIBITION_CATALOG[activeChamber.id].map((art, idx) => (
-                  <button
-                    key={art.id}
-                    onClick={() => setInspectedArtwork(art)}
-                    className="group relative aspect-[4/3] rounded-lg overflow-hidden border border-white/20 hover:border-[#e5c38c] transition-all duration-200 cursor-pointer shadow-md hover:scale-105 bg-black/40"
-                    title={`${art.title} - ${art.project}`}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={art.image}
-                      alt={art.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-10 transition-opacity" />
-                    <span className="absolute bottom-1 right-1 text-[8px] font-mono text-white/90 bg-black/70 px-1 rounded">
-                      0{idx + 1}
-                    </span>
-                  </button>
-                ))}
+                {EXHIBITION_CATALOG[activeChamber.id].map((art, idx) => {
+                  const isSelected = activeArtworks[activeChamber.id] === art.id;
+                  return (
+                    <button
+                      key={art.id}
+                      onClick={() => handleSelectArtwork(activeChamber.id, art)}
+                      className={`group relative aspect-[4/3] rounded-lg overflow-hidden border transition-all duration-300 cursor-pointer shadow-md bg-black/40 ${
+                        isSelected
+                          ? "border-[#e5c38c] ring-2 ring-[#e5c38c] shadow-[0_0_15px_rgba(229,195,140,0.75)] scale-105"
+                          : "border-white/20 hover:border-[#e5c38c]/70 hover:scale-105"
+                      }`}
+                      title={`Change wall artwork to: ${art.title} - ${art.project}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={art.image}
+                        alt={art.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                      <div
+                        className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity ${
+                          isSelected ? "opacity-15" : "opacity-60 group-hover:opacity-10"
+                        }`}
+                      />
+                      {isSelected && (
+                        <span className="absolute top-1 left-1 w-2 h-2 rounded-full bg-[#e5c38c] shadow-[0_0_6px_#e5c38c]" />
+                      )}
+                      <span
+                        className={`absolute bottom-1 right-1 text-[8px] font-mono px-1 rounded transition-colors ${
+                          isSelected ? "text-black bg-[#e5c38c] font-bold" : "text-white/90 bg-black/70"
+                        }`}
+                      >
+                        0{idx + 1}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -6388,7 +5910,7 @@ export default function ThreeMansionEngine() {
       )}
 
       {/* 6. HALLWAY SCROLL HINT */}
-      {!activeChamber && isDoorOpen && (
+      {!activeChamber && isDoorOpen && !isLightingSequence && (
         <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 text-center pointer-events-none animate-pulse">
           <div className="flex flex-col items-center space-y-2 px-5 py-2.5 rounded-full bg-[#fbf8f2]/95 border border-[#b8975a]/30 shadow-md pointer-events-none">
             <Compass size={18} className="text-[#b8975a] animate-spin" style={{ animationDuration: "12s" }} />
@@ -6399,8 +5921,21 @@ export default function ThreeMansionEngine() {
         </div>
       )}
 
+      {/* 6b. ILLUMINATION WAVE SKIP INTRO BUTTON */}
+      {isLightingSequence && (
+        <div className="fixed top-8 right-8 z-50 pointer-events-auto animate-fadeIn">
+          <button
+            onClick={() => triggerSkipDoorRef.current()}
+            className="text-[10px] font-mono tracking-[0.28em] uppercase text-[#e5c38c] hover:text-white transition-all py-2 px-5 rounded-full border border-[#b8975a]/50 bg-[#181412]/90 hover:bg-black/95 cursor-pointer shadow-xl flex items-center space-x-2"
+          >
+            <span>Skip Intro</span>
+            <span>→</span>
+          </button>
+        </div>
+      )}
+
       {/* 7. FIXED BOTTOM NAVIGATION BAR */}
-      {isDoorOpen && (
+      {isDoorOpen && !isLightingSequence && (
         <nav className="fixed bottom-0 left-0 w-full z-40 py-5 px-8 md:px-16 flex flex-col md:flex-row items-center justify-between border-t border-[#b8975a]/30 bg-[#1a1614]/98 pointer-events-none shadow-2xl animate-fadeIn">
           {/* Continuous Gold Scroll Progress Line */}
           <div className="absolute top-0 left-0 w-full h-[3px] bg-black/40 pointer-events-none">

@@ -59,7 +59,19 @@ export default function CustomCursor() {
     };
   }, [cursorX, cursorY, isVisible]);
 
-  if (!isVisible) return null;
+  const [isCinematic, setIsCinematic] = useState(false);
+
+  useEffect(() => {
+    const updateCinematic = () => {
+      setIsCinematic(document.body.classList.contains("cinematic-active"));
+    };
+    updateCinematic();
+    const observer = new MutationObserver(updateCinematic);
+    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
+  if (!isVisible || isCinematic) return null;
 
   return (
     <div className="hidden lg:block pointer-events-none fixed inset-0 z-50 overflow-hidden">
