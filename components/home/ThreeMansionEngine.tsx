@@ -225,7 +225,6 @@ export default function ThreeMansionEngine() {
         onComplete: () => {
           hero.canvasMat.map = newTex;
           hero.canvasMat.emissiveMap = newTex;
-          hero.canvasMat.needsUpdate = true;
           gsap.to(hero.canvasMat, {
             opacity: 1.0,
             duration: 0.22,
@@ -625,8 +624,11 @@ export default function ThreeMansionEngine() {
     renderer.toneMappingExposure = 1.10; // perfectly calibrated to prevent white blowout on marble floor
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(renderer.domElement);
+    // Crucial for 60FPS: disable synchronous shader validation stalls (eliminates getProgramInfoLog halts)
+    renderer.debug.checkShaderErrors = false;
 
     // --- 2. TEXTURE LOADING MANAGER ---
+    let triggerWarmUpGPU = () => {};
     const loadingManager = new THREE.LoadingManager();
     loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
       setLoadProgress(Math.round((itemsLoaded / itemsTotal) * 100));
@@ -634,6 +636,7 @@ export default function ThreeMansionEngine() {
     loadingManager.onLoad = () => {
       setTimeout(() => {
         setIsLoading(false);
+        triggerWarmUpGPU();
         if (sceneStateRef.current.doorState === "loading") {
           sceneStateRef.current.doorState = "ready";
           setDoorState("ready");
@@ -643,6 +646,7 @@ export default function ThreeMansionEngine() {
     loadingManager.onError = (url) => {
       console.warn("Texture load failed, continuing:", url);
       setIsLoading(false);
+      triggerWarmUpGPU();
       if (sceneStateRef.current.doorState === "loading") {
         sceneStateRef.current.doorState = "ready";
         setDoorState("ready");
@@ -651,6 +655,7 @@ export default function ThreeMansionEngine() {
     // Fallback safety: ensure preloader is dismissed within 2s under all network conditions
     const safetyTimer = setTimeout(() => {
       setIsLoading(false);
+      triggerWarmUpGPU();
       if (sceneStateRef.current.doorState === "loading") {
         sceneStateRef.current.doorState = "ready";
         setDoorState("ready");
@@ -722,6 +727,9 @@ export default function ThreeMansionEngine() {
         loaded.anisotropy = maxAniso;
         loaded.generateMipmaps = true;
         loaded.needsUpdate = true;
+        try {
+          renderer.initTexture(loaded);
+        } catch (_) {}
       });
       t.colorSpace = THREE.SRGBColorSpace;
       t.minFilter = THREE.LinearMipmapLinearFilter;
@@ -765,120 +773,116 @@ export default function ThreeMansionEngine() {
       muralTex21, muralTex22, muralTex23, muralTex24,
     ];
 
-    // --- CHAMBER TEXTURE STREAMING ARCHITECTURE ---
-    // Uses 1x1 placeholder texture for unmounted/distant chambers, dynamically loading
-    // and caching 4K master textures when approaching, and freeing VRAM when far away.
-    const placeholderData = new Uint8Array([235, 230, 222, 255]); // warm neutral museum mat
-    const placeholderTex = new THREE.DataTexture(placeholderData, 1, 1, THREE.RGBAFormat);
-    placeholderTex.needsUpdate = true;
-
-    const streamedTextureCache = new Map<string, THREE.Texture>();
-
-    const getStreamedTexture = (url: string): THREE.Texture => {
-      let tex = streamedTextureCache.get(url);
-      if (!tex) {
-        tex = loadMural(url);
-        streamedTextureCache.set(url, tex);
-      }
-      return tex;
-    };
-
-    interface ChamberArtSlot {
-      mat: THREE.MeshStandardMaterial;
-      url: string;
-    }
-
-    interface ChamberStreamer {
-      id: string;
-      centerProgress: number;
-      slots: ChamberArtSlot[];
-      isLoaded: boolean;
-    }
-
-    const chamberStreamers: ChamberStreamer[] = [];
-
-    const loadChamberTextures = (chamber: ChamberStreamer) => {
-      if (chamber.isLoaded) return;
-      chamber.isLoaded = true;
-
-      chamber.slots.forEach((slot) => {
-        const tex = getStreamedTexture(slot.url);
-        slot.mat.map = tex;
-        slot.mat.emissiveMap = tex;
-        slot.mat.needsUpdate = true;
-        tex.needsUpdate = true;
+    // --- HIGH-PERFORMANCE 4K CHAMBER ARTWORK ARCHITECTURE ---
+    // Uses LinearFilter & generateMipmaps = false to eliminate synchronous gl.generateMipmap stalls,
+    // save 33% GPU VRAM, and provide pristine native 4K texel sampling with zero lag.
+    const loadChamberArt = (src: string) => {
+      const t = textureLoader.load(src, (loaded) => {
+        loaded.colorSpace = THREE.SRGBColorSpace;
+        loaded.generateMipmaps = false;
+        loaded.minFilter = THREE.LinearFilter;
+        loaded.magFilter = THREE.LinearFilter;
+        loaded.needsUpdate = true;
         try {
-          const img = tex.image as { complete?: boolean; width?: number } | undefined;
-          if (img && (img.complete || (img.width && img.width > 0))) {
-            renderer.initTexture(tex);
-          }
+          renderer.initTexture(loaded);
         } catch (_) {}
       });
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.generateMipmaps = false;
+      t.minFilter = THREE.LinearFilter;
+      t.magFilter = THREE.LinearFilter;
+      return t;
     };
 
-    const unloadChamberTextures = (chamber: ChamberStreamer) => {
-      if (!chamber.isLoaded) return;
-      chamber.isLoaded = false;
+    // Chamber 1: Grand Living
+    const texCh1Living = loadChamberArt("/assets/exhibition/ch1_living.jpg");
+    const texCh1Dining = loadChamberArt("/assets/exhibition/ch1_dining.jpg");
+    const texCh1Parlour = loadChamberArt("/assets/exhibition/ch1_parlour.jpg");
+    const texCh1Lounge = loadChamberArt("/assets/exhibition/ch1_lounge.jpg");
+    const texCh1Media = loadChamberArt("/assets/exhibition/ch1_media.jpg");
 
-      chamber.slots.forEach((slot) => {
-        slot.mat.map = placeholderTex;
-        slot.mat.emissiveMap = placeholderTex;
-        slot.mat.needsUpdate = true;
-        const tex = streamedTextureCache.get(slot.url);
-        if (tex) {
-          tex.dispose();
-        }
-      });
-    };
+    // Chamber 2: Versace Suite
+    const texCh2WoodBed = loadChamberArt("/assets/exhibition/ch2_woodbed.jpg");
+    const texCh2Bed1 = loadChamberArt("/assets/exhibition/ch2_bed1.jpg");
+    const texCh2Vanity = loadChamberArt("/assets/exhibition/ch2_vanity.jpg");
+    const texCh2Emerald = loadChamberArt("/assets/exhibition/ch2_emerald.jpg");
+    const texCh2Linear = loadChamberArt("/assets/exhibition/ch2_linear.jpg");
 
-    const artworkUrlMap: Record<string, string> = {
-      ch1_living: "/assets/exhibition/ch1_living.jpg",
-      ch1_dining: "/assets/exhibition/ch1_dining.jpg",
-      ch1_parlour: "/assets/exhibition/ch1_parlour.jpg",
-      ch1_lounge: "/assets/exhibition/ch1_lounge.jpg",
-      ch1_media: "/assets/exhibition/ch1_media.jpg",
+    // Chamber 3: Sacred Sanctum
+    const texCh3Classic = loadChamberArt("/assets/exhibition/ch3_mandir_classic.jpg");
+    const texCh3Stone = loadChamberArt("/assets/exhibition/ch3_stone_altar.jpg");
+    const texCh3Courtyard = loadChamberArt("/assets/exhibition/ch3_courtyard.jpg");
+    const texCh3Foyer = loadChamberArt("/assets/exhibition/ch3_foyer.jpg");
+    const texCh3Portal = loadChamberArt("/assets/exhibition/ch3_portal.jpg");
 
-      ch2_woodbed: "/assets/exhibition/ch2_woodbed.jpg",
-      ch2_bed1: "/assets/exhibition/ch2_bed1.jpg",
-      ch2_vanity: "/assets/exhibition/ch2_vanity.jpg",
-      ch2_emerald: "/assets/exhibition/ch2_emerald.jpg",
-      ch2_linear: "/assets/exhibition/ch2_linear.jpg",
+    // Chamber 4: Executive Boardroom
+    const texCh4Boardroom = loadChamberArt("/assets/exhibition/ch4_boardroom.jpg");
+    const texCh4SkyLounge = loadChamberArt("/assets/exhibition/ch4_skylounge.jpg");
+    const texCh4Dining = loadChamberArt("/assets/exhibition/ch4_dining.jpg");
+    const texCh4Vip = loadChamberArt("/assets/exhibition/ch4_vip.jpg");
+    const texCh4Terrace = loadChamberArt("/assets/exhibition/ch4_terrace.jpg");
 
-      ch3_mandir_classic: "/assets/exhibition/ch3_mandir_classic.jpg",
-      ch3_stone_altar: "/assets/exhibition/ch3_stone_altar.jpg",
-      ch3_courtyard: "/assets/exhibition/ch3_courtyard.jpg",
-      ch3_foyer: "/assets/exhibition/ch3_foyer.jpg",
-      ch3_portal: "/assets/exhibition/ch3_portal.jpg",
+    // Chamber 5: Royal Salon
+    const texCh5Living = loadChamberArt("/assets/exhibition/ch5_living.jpg");
+    const texCh5Lounge = loadChamberArt("/assets/exhibition/ch5_lounge.jpg");
+    const texCh5Staircase = loadChamberArt("/assets/exhibition/ch5_staircase.jpg");
+    const texCh5Minimalist = loadChamberArt("/assets/exhibition/ch5_minimalist.jpg");
+    const texCh5Velvet = loadChamberArt("/assets/exhibition/ch5_velvet.jpg");
 
-      ch4_boardroom: "/assets/exhibition/ch4_boardroom.jpg",
-      ch4_skylounge: "/assets/exhibition/ch4_skylounge.jpg",
-      ch4_dining: "/assets/exhibition/ch4_dining.jpg",
-      ch4_vip: "/assets/exhibition/ch4_vip.jpg",
-      ch4_terrace: "/assets/exhibition/ch4_terrace.jpg",
+    // Chamber 6: Corporate Reception
+    const texCh6Reception = loadChamberArt("/assets/exhibition/ch6_reception.jpg");
+    const texCh6Chevron = loadChamberArt("/assets/exhibition/ch6_chevron.jpg");
+    const texCh6Foyer = loadChamberArt("/assets/exhibition/ch6_foyer.jpg");
+    const texCh6Lobby = loadChamberArt("/assets/exhibition/ch6_lobby.jpg");
+    const texCh6Workstation = loadChamberArt("/assets/exhibition/ch6_workstation.jpg");
 
-      ch5_living: "/assets/exhibition/ch5_living.jpg",
-      ch5_lounge: "/assets/exhibition/ch5_lounge.jpg",
-      ch5_staircase: "/assets/exhibition/ch5_staircase.jpg",
-      ch5_minimalist: "/assets/exhibition/ch5_minimalist.jpg",
-      ch5_velvet: "/assets/exhibition/ch5_velvet.jpg",
-
-      ch6_reception: "/assets/exhibition/ch6_reception.jpg",
-      ch6_chevron: "/assets/exhibition/ch6_chevron.jpg",
-      ch6_foyer: "/assets/exhibition/ch6_foyer.jpg",
-      ch6_lobby: "/assets/exhibition/ch6_lobby.jpg",
-      ch6_workstation: "/assets/exhibition/ch6_workstation.jpg",
-    };
+    const allExhibitionArtTextures = [
+      texCh1Living, texCh1Dining, texCh1Parlour, texCh1Lounge, texCh1Media,
+      texCh2WoodBed, texCh2Bed1, texCh2Vanity, texCh2Emerald, texCh2Linear,
+      texCh3Classic, texCh3Stone, texCh3Courtyard, texCh3Foyer, texCh3Portal,
+      texCh4Boardroom, texCh4SkyLounge, texCh4Dining, texCh4Vip, texCh4Terrace,
+      texCh5Living, texCh5Lounge, texCh5Staircase, texCh5Minimalist, texCh5Velvet,
+      texCh6Reception, texCh6Chevron, texCh6Foyer, texCh6Lobby, texCh6Workstation,
+    ];
 
     // Live texture lookup dictionary for real-time dynamic wall artwork switching
-    chamberArtworkTexturesRef.current = new Proxy({} as Record<string, THREE.Texture>, {
-      get: (_target, prop: string) => {
-        const url = artworkUrlMap[prop];
-        if (url) {
-          return getStreamedTexture(url);
-        }
-        return undefined;
-      },
-    });
+    chamberArtworkTexturesRef.current = {
+      ch1_living: texCh1Living,
+      ch1_dining: texCh1Dining,
+      ch1_parlour: texCh1Parlour,
+      ch1_lounge: texCh1Lounge,
+      ch1_media: texCh1Media,
+
+      ch2_woodbed: texCh2WoodBed,
+      ch2_bed1: texCh2Bed1,
+      ch2_vanity: texCh2Vanity,
+      ch2_emerald: texCh2Emerald,
+      ch2_linear: texCh2Linear,
+
+      ch3_mandir_classic: texCh3Classic,
+      ch3_stone_altar: texCh3Stone,
+      ch3_courtyard: texCh3Courtyard,
+      ch3_foyer: texCh3Foyer,
+      ch3_portal: texCh3Portal,
+
+      ch4_boardroom: texCh4Boardroom,
+      ch4_skylounge: texCh4SkyLounge,
+      ch4_dining: texCh4Dining,
+      ch4_vip: texCh4Vip,
+      ch4_terrace: texCh4Terrace,
+
+      ch5_living: texCh5Living,
+      ch5_lounge: texCh5Lounge,
+      ch5_staircase: texCh5Staircase,
+      ch5_minimalist: texCh5Minimalist,
+      ch5_velvet: texCh5Velvet,
+
+      ch6_reception: texCh6Reception,
+      ch6_chevron: texCh6Chevron,
+      ch6_foyer: texCh6Foyer,
+      ch6_lobby: texCh6Lobby,
+      ch6_workstation: texCh6Workstation,
+    };
 
     // Bespoke Chamber PBR Materials & Textures
     const boucleDiffTex = textureLoader.load("/assets/textures/boucle_fabric.jpg");
@@ -3772,7 +3776,7 @@ export default function ThreeMansionEngine() {
 
     // Helper to create museum-grade exhibition framed artworks with bevel mat, antique gold profile, picture light, and brass plaque
     const createFramedArtMesh = (
-      texOrPlaceholder: THREE.Texture = placeholderTex,
+      artTex: THREE.Texture,
       artW: number,
       artH: number,
       frameThick = 0.08,
@@ -3806,11 +3810,10 @@ export default function ThreeMansionEngine() {
       );
       matMesh.position.z = 0.008;
 
-      // 3. Photographic Fine Art Canvas (Starts with lightweight placeholder until camera approaches)
-      const initialTex = texOrPlaceholder || placeholderTex;
+      // 3. Photographic Fine Art Canvas (Direct 4K museum master texture)
       const canvasMat = new THREE.MeshStandardMaterial({
-        map: initialTex,
-        emissiveMap: initialTex,
+        map: artTex,
+        emissiveMap: artTex,
         emissive: 0xffffff,
         emissiveIntensity: 0.35, // Museum picture-light radiance for crystal clarity
         roughness: 0.32,
@@ -3918,13 +3921,22 @@ export default function ThreeMansionEngine() {
       };
     };
 
+    // --- PERMANENT CHAMBER LIGHTS CONTAINER ---
+    // Attached directly to hallwayGroup so that active light counts remain 100% constant throughout
+    // all scrolling, preventing mid-scroll WebGLProgram recompilations.
+    const chamberLightsGroup = new THREE.Group();
+    chamberLightsGroup.name = "permanentChamberLights";
+    hallwayGroup.add(chamberLightsGroup);
+
     // -------------------------------------------------------------------------
     // CHAMBER I: GRAND LIVING (Curated Architectural Gallery & Real 3D Furniture)
     // -------------------------------------------------------------------------
     const buildGrandLivingChamber = () => {
+      const xDoor = -hallWidth / 2;
+      const zCenter = -20;
       const { roomGroup, roomW, roomD, roomH, wallMat } = buildRoomShell(
-        -hallWidth / 2,
-        -20,
+        xDoor,
+        zCenter,
         -1,
         0xe6ded2,
         grandFloorMat
@@ -3948,7 +3960,7 @@ export default function ThreeMansionEngine() {
       roomGroup.add(sheerDrapery);
 
       // Artwork 1 (Back Wall Hero): Monumental 12.2m x 5.8m 4K Centerpiece commanding entire feature wall
-      const ch1HeroArt = createFramedArtMesh(placeholderTex, 12.2, 5.8, 0.11, true, 0.14);
+      const ch1HeroArt = createFramedArtMesh(texCh1Living, 12.2, 5.8, 0.11, true, 0.14);
       ch1HeroArt.group.position.set(backX + 0.10, 3.40, 0);
       ch1HeroArt.group.rotation.y = Math.PI / 2;
       roomGroup.add(ch1HeroArt.group);
@@ -3970,11 +3982,11 @@ export default function ThreeMansionEngine() {
       sideWall1.position.set(0, roomH / 2, -roomD / 2);
 
       // Artwork 2 (Side Wall 1 Left): The Horizon Dining Pavilion (Monumental 5.8m x 3.8m)
-      const ch1ArtDining = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch1ArtDining = createFramedArtMesh(texCh1Dining, 5.8, 3.8, 0.09, true);
       ch1ArtDining.group.position.set(-3.5, 3.60, -roomD / 2 + 0.08);
 
       // Artwork 3 (Side Wall 1 Right): The Family Media Parlour (Monumental 5.8m x 3.8m)
-      const ch1ArtParlour = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch1ArtParlour = createFramedArtMesh(texCh1Parlour, 5.8, 3.8, 0.09, true);
       ch1ArtParlour.group.position.set(3.5, 3.60, -roomD / 2 + 0.08);
       roomGroup.add(sideWall1, ch1ArtDining.group, ch1ArtParlour.group);
 
@@ -3984,30 +3996,30 @@ export default function ThreeMansionEngine() {
       sideWall2.rotation.y = Math.PI;
 
       // Artwork 4 (Side Wall 2 Left): The Atelier Floral Lounge (Monumental 5.8m x 3.8m)
-      const ch1ArtLounge = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch1ArtLounge = createFramedArtMesh(texCh1Lounge, 5.8, 3.8, 0.09, true);
       ch1ArtLounge.group.position.set(-3.5, 3.60, roomD / 2 - 0.08);
       ch1ArtLounge.group.rotation.y = Math.PI;
 
       // Artwork 5 (Side Wall 2 Right): The Master Entertainment Wall (Monumental 5.8m x 3.8m)
-      const ch1ArtMedia = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch1ArtMedia = createFramedArtMesh(texCh1Media, 5.8, 3.8, 0.09, true);
       ch1ArtMedia.group.position.set(3.5, 3.60, roomD / 2 - 0.08);
       ch1ArtMedia.group.rotation.y = Math.PI;
       roomGroup.add(sideWall2, ch1ArtLounge.group, ch1ArtMedia.group);
 
       // 5. EMOTIONAL LIGHTING SCHEME: GOLDEN DAYLIGHT SPILL (2800K Sunlight & 5500K Sky Fill)
-      // Angled Golden Sunbeam Directional Key Light
-      const grandSunbeam = new THREE.DirectionalLight(0xffecd0, 1.6);
-      grandSunbeam.position.set(-6.5, 6.8, -4.8);
-      grandSunbeam.target.position.set(-0.8, 0.35, 0);
-      roomGroup.add(grandSunbeam);
-      roomGroup.add(grandSunbeam.target);
+      // Angled Golden Sunbeam Spot Key Light (localized to Chamber 1, constant light count)
+      const grandSunbeam = new THREE.SpotLight(0xffecd0, 1.8, 24, Math.PI / 3, 0.45);
+      grandSunbeam.position.set(xDoor - 6.5, 6.8, zCenter - 4.8);
+      grandSunbeam.target.position.set(xDoor - 0.8, 0.35, zCenter);
+      chamberLightsGroup.add(grandSunbeam);
+      chamberLightsGroup.add(grandSunbeam.target);
 
-      // Soft Skylight Fill (Cool Blue Skylight bounce in shaded crevices)
-      const grandSkyFill = new THREE.DirectionalLight(0xe4eff8, 0.55);
-      grandSkyFill.position.set(3.5, 5.2, 2.5);
-      grandSkyFill.target.position.set(-0.8, 0.35, 0);
-      roomGroup.add(grandSkyFill);
-      roomGroup.add(grandSkyFill.target);
+      // Soft Skylight Fill Spot Light (Cool Blue Skylight bounce in shaded crevices)
+      const grandSkyFill = new THREE.SpotLight(0xe4eff8, 0.65, 22, Math.PI / 3, 0.45);
+      grandSkyFill.position.set(xDoor + 3.5, 5.2, zCenter + 2.5);
+      grandSkyFill.target.position.set(xDoor - 0.8, 0.35, zCenter);
+      chamberLightsGroup.add(grandSkyFill);
+      chamberLightsGroup.add(grandSkyFill.target);
 
       // 6. Ambient Dust Motes Drifting in Sunbeam Frustum across Open Gallery Floor
       const dGeo = new THREE.BufferGeometry();
@@ -4030,20 +4042,6 @@ export default function ThreeMansionEngine() {
       );
       roomGroup.add(grandDustPoints);
 
-      // Register Chamber 1 Artwork Texture Streamer
-      chamberStreamers.push({
-        id: "grand",
-        centerProgress: 0.15,
-        slots: [
-          { mat: ch1HeroArt.canvasMat, url: "/assets/exhibition/ch1_living.jpg" },
-          { mat: ch1ArtDining.canvasMat, url: "/assets/exhibition/ch1_dining.jpg" },
-          { mat: ch1ArtParlour.canvasMat, url: "/assets/exhibition/ch1_parlour.jpg" },
-          { mat: ch1ArtLounge.canvasMat, url: "/assets/exhibition/ch1_lounge.jpg" },
-          { mat: ch1ArtMedia.canvasMat, url: "/assets/exhibition/ch1_media.jpg" },
-        ],
-        isLoaded: false,
-      });
-
       hallwayGroup.add(roomGroup);
       return roomGroup;
     };
@@ -4052,9 +4050,11 @@ export default function ThreeMansionEngine() {
     // CHAMBER II: VERSACE SUITE (Curated Master Suite Architectural Gallery)
     // -------------------------------------------------------------------------
     const buildVersaceSuiteChamber = () => {
+      const xDoor = hallWidth / 2;
+      const zCenter = -45;
       const { roomGroup, roomW, roomD, roomH, wallMat } = buildRoomShell(
-        hallWidth / 2,
-        -45,
+        xDoor,
+        zCenter,
         1,
         0xe2d6c4,
         grandFloorMat // Continuous Italian Nero Marquina black marble floor
@@ -4069,7 +4069,7 @@ export default function ThreeMansionEngine() {
       roomGroup.add(oakBackWall);
 
       // Artwork 1 (Back Wall Hero): Monumental 12.2m x 5.8m 4K Master Retreat Centerpiece
-      const ch2HeroArt = createFramedArtMesh(placeholderTex, 12.2, 5.8, 0.11, true, 0.14);
+      const ch2HeroArt = createFramedArtMesh(texCh2WoodBed, 12.2, 5.8, 0.11, true, 0.14);
       ch2HeroArt.group.position.set(backX - 0.08, 3.40, 0);
       ch2HeroArt.group.rotation.y = -Math.PI / 2;
       roomGroup.add(ch2HeroArt.group);
@@ -4080,11 +4080,11 @@ export default function ThreeMansionEngine() {
       sideWall1.position.set(0, roomH / 2, -roomD / 2);
 
       // Artwork 2 (Side Wall 1 Left): The Horizon Master Bed Suite (Monumental 5.8m x 3.8m)
-      const ch2ArtBed1 = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch2ArtBed1 = createFramedArtMesh(texCh2Bed1, 5.8, 3.8, 0.09, true);
       ch2ArtBed1.group.position.set(-3.5, 3.60, -roomD / 2 + 0.08);
 
       // Artwork 3 (Side Wall 1 Right): The Haute Couture Vanity Mirror (Monumental 5.8m x 3.8m)
-      const ch2ArtVanity = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch2ArtVanity = createFramedArtMesh(texCh2Vanity, 5.8, 3.8, 0.09, true);
       ch2ArtVanity.group.position.set(3.5, 3.60, -roomD / 2 + 0.08);
       roomGroup.add(sideWall1, ch2ArtBed1.group, ch2ArtVanity.group);
 
@@ -4094,21 +4094,21 @@ export default function ThreeMansionEngine() {
       sideWall2.rotation.y = Math.PI;
 
       // Artwork 4 (Side Wall 2 Left): The Emerald Accent Master Suite (Monumental 5.8m x 3.8m)
-      const ch2ArtEmerald = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch2ArtEmerald = createFramedArtMesh(texCh2Emerald, 5.8, 3.8, 0.09, true);
       ch2ArtEmerald.group.position.set(-3.5, 3.60, roomD / 2 - 0.08);
       ch2ArtEmerald.group.rotation.y = Math.PI;
 
       // Artwork 5 (Side Wall 2 Right): The Linear Headboard Atelier (Monumental 5.8m x 3.8m)
-      const ch2ArtLinear = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch2ArtLinear = createFramedArtMesh(texCh2Linear, 5.8, 3.8, 0.09, true);
       ch2ArtLinear.group.position.set(3.5, 3.60, roomD / 2 - 0.08);
       ch2ArtLinear.group.rotation.y = Math.PI;
       roomGroup.add(sideWall2, ch2ArtEmerald.group, ch2ArtLinear.group);
 
       // Warm directional wall illumination
       const suiteSpot = new THREE.SpotLight(0xffecd0, 1.8, 16, Math.PI / 3, 0.45);
-      suiteSpot.position.set(2.0, roomH - 0.4, 0);
+      suiteSpot.position.set(xDoor + 2.0, roomH - 0.4, zCenter);
       suiteSpot.target = ch2HeroArt.group;
-      roomGroup.add(suiteSpot);
+      chamberLightsGroup.add(suiteSpot);
 
       // Micro-Dust Motes Floating across Open Gallery Space
       const vDustGeo = new THREE.BufferGeometry();
@@ -4131,20 +4131,6 @@ export default function ThreeMansionEngine() {
       );
       roomGroup.add(versaceDustPoints);
 
-      // Register Chamber 2 Artwork Texture Streamer
-      chamberStreamers.push({
-        id: "versace",
-        centerProgress: 0.32,
-        slots: [
-          { mat: ch2HeroArt.canvasMat, url: "/assets/exhibition/ch2_woodbed.jpg" },
-          { mat: ch2ArtBed1.canvasMat, url: "/assets/exhibition/ch2_bed1.jpg" },
-          { mat: ch2ArtVanity.canvasMat, url: "/assets/exhibition/ch2_vanity.jpg" },
-          { mat: ch2ArtEmerald.canvasMat, url: "/assets/exhibition/ch2_emerald.jpg" },
-          { mat: ch2ArtLinear.canvasMat, url: "/assets/exhibition/ch2_linear.jpg" },
-        ],
-        isLoaded: false,
-      });
-
       hallwayGroup.add(roomGroup);
       return roomGroup;
     };
@@ -4153,9 +4139,11 @@ export default function ThreeMansionEngine() {
     // CHAMBER III: SACRED SANCTUM (Mandir Altar, Gayatri Wall, Backlit Onyx Halo)
     // -------------------------------------------------------------------------
     const buildSacredSanctumChamber = () => {
+      const xDoor = -hallWidth / 2;
+      const zCenter = -70;
       const { roomGroup, roomW, roomD, roomH, wallMat } = buildRoomShell(
-        -hallWidth / 2,
-        -70,
+        xDoor,
+        zCenter,
         -1,
         0xf4ece2,
         sanctumFloorMarbleMat // Continuous Polished Italian Calacatta marble floor with fog: false
@@ -4175,23 +4163,23 @@ export default function ThreeMansionEngine() {
 
       // Artwork 1 (Back Wall Hero): Monumental 12.2m x 5.8m 4K Sacred Sanctum Centerpiece
       // Authentic Gopal Lahoti Mandir Altar with backlit Tirupati Venkateswara halo & Sanskrit Gayatri Mantra
-      const ch3HeroArt = createFramedArtMesh(placeholderTex, 12.2, 5.8, 0.11, true, 0.14);
+      const ch3HeroArt = createFramedArtMesh(texCh3Classic, 12.2, 5.8, 0.11, true, 0.14);
       ch3HeroArt.group.position.set(backX + 0.10, 3.40, 0);
       ch3HeroArt.group.rotation.y = Math.PI / 2;
       roomGroup.add(ch3HeroArt.group);
       heroArtRefs.current["sacred"] = ch3HeroArt;
 
       // 2. RIGHT FEATURE WALL (Z = -roomD/2 = -8.0m):
-      // NO MORE BLACK WALL! Replaced with full monumental gallery wall exhibiting 2 framed 4K Mandir artworks
+      // Full monumental gallery wall exhibiting 2 framed 4K Mandir artworks
       const sideWall1 = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), sanctumPlasterMat);
       sideWall1.position.set(0, roomH / 2, -roomD / 2);
 
       // Artwork 2 (Side Wall 1 Left): Handcrafted Wooden Temple Sanctuary (Monumental 5.8m x 3.8m)
-      const ch3ArtRight1 = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch3ArtRight1 = createFramedArtMesh(texCh3Stone, 5.8, 3.8, 0.09, true);
       ch3ArtRight1.group.position.set(-3.5, 3.60, -roomD / 2 + 0.08);
 
       // Artwork 3 (Side Wall 1 Right): Sacred Altar & Temple Bells (Monumental 5.8m x 3.8m)
-      const ch3ArtRight2 = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch3ArtRight2 = createFramedArtMesh(texCh3Courtyard, 5.8, 3.8, 0.09, true);
       ch3ArtRight2.group.position.set(3.5, 3.60, -roomD / 2 + 0.08);
       roomGroup.add(sideWall1, ch3ArtRight1.group, ch3ArtRight2.group);
 
@@ -4202,21 +4190,21 @@ export default function ThreeMansionEngine() {
       sideWall2.rotation.y = Math.PI;
 
       // Artwork 4 (Side Wall 2 Left): Intricate Teakwood Temple Jali (Monumental 5.8m x 3.8m)
-      const ch3ArtLeft1 = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch3ArtLeft1 = createFramedArtMesh(texCh3Foyer, 5.8, 3.8, 0.09, true);
       ch3ArtLeft1.group.position.set(-3.5, 3.60, roomD / 2 - 0.08);
       ch3ArtLeft1.group.rotation.y = Math.PI;
 
       // Artwork 5 (Side Wall 2 Right): Heritage Teakwood Mandir (Monumental 5.8m x 3.8m)
-      const ch3ArtLeft2 = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch3ArtLeft2 = createFramedArtMesh(texCh3Portal, 5.8, 3.8, 0.09, true);
       ch3ArtLeft2.group.position.set(3.5, 3.60, roomD / 2 - 0.08);
       ch3ArtLeft2.group.rotation.y = Math.PI;
       roomGroup.add(sideWall2, ch3ArtLeft1.group, ch3ArtLeft2.group);
 
       // 4. ARCHITECTURAL LIGHTING: Warm Golden Directional Key Lights (2700K Amber Sanctuary Illumination)
       const sanctumSpot = new THREE.SpotLight(0xffeed6, 1.8, 16, Math.PI / 3, 0.45);
-      sanctumSpot.position.set(-2.0, roomH - 0.4, 0);
+      sanctumSpot.position.set(xDoor - 2.0, roomH - 0.4, zCenter);
       sanctumSpot.target = ch3HeroArt.group;
-      roomGroup.add(sanctumSpot);
+      chamberLightsGroup.add(sanctumSpot);
 
       // Ceiling Coffers Downlights
       const sanctumDownlightMat = new THREE.MeshStandardMaterial({
@@ -4272,9 +4260,10 @@ export default function ThreeMansionEngine() {
       sanctumFlameMesh.position.set(0, 1.02, 0);
 
       sanctumDiyaLight = new THREE.PointLight(0xff9a28, 0.85, 3.5, 2.0);
-      sanctumDiyaLight.position.set(0, 1.05, 0);
+      sanctumDiyaLight.position.set(xDoor - 5.5, 1.05, zCenter);
+      chamberLightsGroup.add(sanctumDiyaLight);
 
-      diyaConsole.add(pedBase, pedTrim, diyaBowl, diyaOil, sanctumFlameMesh, sanctumDiyaLight);
+      diyaConsole.add(pedBase, pedTrim, diyaBowl, diyaOil, sanctumFlameMesh);
       roomGroup.add(diyaConsole);
 
       // 6. RISING INCENSE SMOKE PARTICLES
@@ -4321,20 +4310,6 @@ export default function ThreeMansionEngine() {
       );
       roomGroup.add(sanctumDust);
 
-      // Register Chamber 3 Artwork Texture Streamer
-      chamberStreamers.push({
-        id: "sacred",
-        centerProgress: 0.49,
-        slots: [
-          { mat: ch3HeroArt.canvasMat, url: "/assets/exhibition/ch3_mandir_classic.jpg" },
-          { mat: ch3ArtRight1.canvasMat, url: "/assets/chambers/chamber3_detail.jpg" },
-          { mat: ch3ArtRight2.canvasMat, url: "/assets/exhibition/ch3_stone_altar.jpg" },
-          { mat: ch3ArtLeft1.canvasMat, url: "/assets/chambers/chamber3_left.jpg" },
-          { mat: ch3ArtLeft2.canvasMat, url: "/assets/exhibition/ch3_foyer.jpg" },
-        ],
-        isLoaded: false,
-      });
-
       hallwayGroup.add(roomGroup);
       return roomGroup;
     };
@@ -4344,9 +4319,11 @@ export default function ThreeMansionEngine() {
     // CHAMBER IV: CORPORATE RECEPTION (Curated Commercial Architectural Gallery)
     // -------------------------------------------------------------------------
     const buildCorporateReceptionChamber = () => {
+      const xDoor = hallWidth / 2;
+      const zCenter = -95;
       const { roomGroup, roomW, roomD, roomH, wallMat } = buildRoomShell(
-        hallWidth / 2,
-        -95,
+        xDoor,
+        zCenter,
         1,
         0x361d28, // deep rich aubergine wall base
         grandFloorMat // Continuous Italian Nero Marquina black marble floor
@@ -4365,7 +4342,7 @@ export default function ThreeMansionEngine() {
       roomGroup.add(featureBackWall);
 
       // Artwork 1 (Back Wall Hero): Monumental 12.2m x 5.8m 4K Executive Boardroom Centerpiece
-      const ch4HeroArt = createFramedArtMesh(placeholderTex, 12.2, 5.8, 0.11, true, 0.14);
+      const ch4HeroArt = createFramedArtMesh(texCh4Boardroom, 12.2, 5.8, 0.11, true, 0.14);
       ch4HeroArt.group.position.set(backX - 0.08, 3.40, 0);
       ch4HeroArt.group.rotation.y = -Math.PI / 2;
       roomGroup.add(ch4HeroArt.group);
@@ -4376,11 +4353,11 @@ export default function ThreeMansionEngine() {
       sideWall1.position.set(0, roomH / 2, -roomD / 2);
 
       // Artwork 2 (Side Wall 1 Left): The Sky Lounge Pavilion (Monumental 5.8m x 3.8m)
-      const ch4ArtSkyLounge = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch4ArtSkyLounge = createFramedArtMesh(texCh4SkyLounge, 5.8, 3.8, 0.09, true);
       ch4ArtSkyLounge.group.position.set(-3.5, 3.60, -roomD / 2 + 0.08);
 
       // Artwork 3 (Side Wall 1 Right): The Executive Dining Suite (Monumental 5.8m x 3.8m)
-      const ch4ArtDining = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch4ArtDining = createFramedArtMesh(texCh4Dining, 5.8, 3.8, 0.09, true);
       ch4ArtDining.group.position.set(3.5, 3.60, -roomD / 2 + 0.08);
       roomGroup.add(sideWall1, ch4ArtSkyLounge.group, ch4ArtDining.group);
 
@@ -4390,35 +4367,21 @@ export default function ThreeMansionEngine() {
       sideWall2.rotation.y = Math.PI;
 
       // Artwork 4 (Side Wall 2 Left): The VIP Executive Salon (Monumental 5.8m x 3.8m)
-      const ch4ArtVip = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch4ArtVip = createFramedArtMesh(texCh4Vip, 5.8, 3.8, 0.09, true);
       ch4ArtVip.group.position.set(-3.5, 3.60, roomD / 2 - 0.08);
       ch4ArtVip.group.rotation.y = Math.PI;
 
       // Artwork 5 (Side Wall 2 Right): The Skyline Terrace Lounge (Monumental 5.8m x 3.8m)
-      const ch4ArtTerrace = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch4ArtTerrace = createFramedArtMesh(texCh4Terrace, 5.8, 3.8, 0.09, true);
       ch4ArtTerrace.group.position.set(3.5, 3.60, roomD / 2 - 0.08);
       ch4ArtTerrace.group.rotation.y = Math.PI;
       roomGroup.add(sideWall2, ch4ArtVip.group, ch4ArtTerrace.group);
 
       // Warm directional wall illumination
       const corpSpot = new THREE.SpotLight(0xffecd0, 1.8, 16, Math.PI / 3, 0.45);
-      corpSpot.position.set(2.0, roomH - 0.4, 0);
+      corpSpot.position.set(xDoor + 2.0, roomH - 0.4, zCenter);
       corpSpot.target = ch4HeroArt.group;
-      roomGroup.add(corpSpot);
-
-      // Register Chamber 4 Artwork Texture Streamer
-      chamberStreamers.push({
-        id: "corporate",
-        centerProgress: 0.66,
-        slots: [
-          { mat: ch4HeroArt.canvasMat, url: "/assets/exhibition/ch4_boardroom.jpg" },
-          { mat: ch4ArtSkyLounge.canvasMat, url: "/assets/exhibition/ch4_skylounge.jpg" },
-          { mat: ch4ArtDining.canvasMat, url: "/assets/exhibition/ch4_dining.jpg" },
-          { mat: ch4ArtVip.canvasMat, url: "/assets/exhibition/ch4_vip.jpg" },
-          { mat: ch4ArtTerrace.canvasMat, url: "/assets/exhibition/ch4_terrace.jpg" },
-        ],
-        isLoaded: false,
-      });
+      chamberLightsGroup.add(corpSpot);
 
       hallwayGroup.add(roomGroup);
       return roomGroup;
@@ -4428,9 +4391,11 @@ export default function ThreeMansionEngine() {
     // CHAMBER V: ROYAL SALON (Curated Living Room 2 - Marble Media Wall & Floating Staircase)
     // -------------------------------------------------------------------------
     const buildRoyalLivingChamber = () => {
+      const xDoor = -hallWidth / 2;
+      const zCenter = -120;
       const { roomGroup, roomW, roomD, roomH, wallMat } = buildRoomShell(
-        -hallWidth / 2,
-        -120,
+        xDoor,
+        zCenter,
         -1,
         0xe8e0d6,
         grandFloorMat // Continuous Italian Nero Marquina black marble floor
@@ -4454,7 +4419,7 @@ export default function ThreeMansionEngine() {
       roomGroup.add(featureBackWall);
 
       // Artwork 1 (Back Wall Hero): Monumental 12.2m x 5.8m 4K Centerpiece - Royal Salon Living Wall
-      const ch5HeroArt = createFramedArtMesh(placeholderTex, 12.2, 5.8, 0.11, true, 0.14);
+      const ch5HeroArt = createFramedArtMesh(texCh5Living, 12.2, 5.8, 0.11, true, 0.14);
       ch5HeroArt.group.position.set(backX + 0.10, 3.40, 0);
       ch5HeroArt.group.rotation.y = Math.PI / 2;
       roomGroup.add(ch5HeroArt.group);
@@ -4465,11 +4430,11 @@ export default function ThreeMansionEngine() {
       sideWall1.position.set(0, roomH / 2, -roomD / 2);
 
       // Artwork 2 (Side Wall 1 Left): The Velvet Cocktail Lounge (Monumental 5.8m x 3.8m)
-      const ch5ArtLounge = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch5ArtLounge = createFramedArtMesh(texCh5Lounge, 5.8, 3.8, 0.09, true);
       ch5ArtLounge.group.position.set(-3.5, 3.60, -roomD / 2 + 0.08);
 
       // Artwork 3 (Side Wall 1 Right): The Cantilever Staircase Atrium (Monumental 5.8m x 3.8m)
-      const ch5ArtStaircase = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch5ArtStaircase = createFramedArtMesh(texCh5Staircase, 5.8, 3.8, 0.09, true);
       ch5ArtStaircase.group.position.set(3.5, 3.60, -roomD / 2 + 0.08);
       roomGroup.add(sideWall1, ch5ArtLounge.group, ch5ArtStaircase.group);
 
@@ -4479,35 +4444,21 @@ export default function ThreeMansionEngine() {
       sideWall2.rotation.y = Math.PI;
 
       // Artwork 4 (Side Wall 2 Left): The Minimalist Media Salon (Monumental 5.8m x 3.8m)
-      const ch5ArtMinimalist = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch5ArtMinimalist = createFramedArtMesh(texCh5Minimalist, 5.8, 3.8, 0.09, true);
       ch5ArtMinimalist.group.position.set(-3.5, 3.60, roomD / 2 - 0.08);
       ch5ArtMinimalist.group.rotation.y = Math.PI;
 
       // Artwork 5 (Side Wall 2 Right): The Royal Velvet Fireside (Monumental 5.8m x 3.8m)
-      const ch5ArtVelvet = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch5ArtVelvet = createFramedArtMesh(texCh5Velvet, 5.8, 3.8, 0.09, true);
       ch5ArtVelvet.group.position.set(3.5, 3.60, roomD / 2 - 0.08);
       ch5ArtVelvet.group.rotation.y = Math.PI;
       roomGroup.add(sideWall2, ch5ArtMinimalist.group, ch5ArtVelvet.group);
 
       // Warm directional wall illumination
       const royalSpot = new THREE.SpotLight(0xffeed6, 1.8, 16, Math.PI / 3, 0.45);
-      royalSpot.position.set(-2.0, roomH - 0.4, 0);
+      royalSpot.position.set(xDoor - 2.0, roomH - 0.4, zCenter);
       royalSpot.target = ch5HeroArt.group;
-      roomGroup.add(royalSpot);
-
-      // Register Chamber 5 Artwork Texture Streamer
-      chamberStreamers.push({
-        id: "royal_living",
-        centerProgress: 0.83,
-        slots: [
-          { mat: ch5HeroArt.canvasMat, url: "/assets/exhibition/ch5_living.jpg" },
-          { mat: ch5ArtLounge.canvasMat, url: "/assets/exhibition/ch5_lounge.jpg" },
-          { mat: ch5ArtStaircase.canvasMat, url: "/assets/exhibition/ch5_staircase.jpg" },
-          { mat: ch5ArtMinimalist.canvasMat, url: "/assets/exhibition/ch5_minimalist.jpg" },
-          { mat: ch5ArtVelvet.canvasMat, url: "/assets/exhibition/ch5_velvet.jpg" },
-        ],
-        isLoaded: false,
-      });
+      chamberLightsGroup.add(royalSpot);
 
       hallwayGroup.add(roomGroup);
       return roomGroup;
@@ -4517,9 +4468,11 @@ export default function ThreeMansionEngine() {
     // CHAMBER VI: CORPORATE RECEPTION 2 (Laxmi Commercial HQ - Brass Concierge & Chevron Timber)
     // -------------------------------------------------------------------------
     const buildCorporateLobbyChamber = () => {
+      const xDoor = hallWidth / 2;
+      const zCenter = -145;
       const { roomGroup, roomW, roomD, roomH, wallMat } = buildRoomShell(
-        hallWidth / 2,
-        -145,
+        xDoor,
+        zCenter,
         1,
         0x201c18, // Warm espresso timber tone
         grandFloorMat // Continuous Italian Nero Marquina black marble floor
@@ -4538,7 +4491,7 @@ export default function ThreeMansionEngine() {
       roomGroup.add(featureBackWall);
 
       // Artwork 1 (Back Wall Hero): Monumental 12.2m x 5.8m 4K Centerpiece - Laxmi Brass Concierge Desk
-      const ch6HeroArt = createFramedArtMesh(placeholderTex, 12.2, 5.8, 0.11, true, 0.14);
+      const ch6HeroArt = createFramedArtMesh(texCh6Reception, 12.2, 5.8, 0.11, true, 0.14);
       ch6HeroArt.group.position.set(backX - 0.08, 3.40, 0);
       ch6HeroArt.group.rotation.y = -Math.PI / 2;
       roomGroup.add(ch6HeroArt.group);
@@ -4549,11 +4502,11 @@ export default function ThreeMansionEngine() {
       sideWall1.position.set(0, roomH / 2, -roomD / 2);
 
       // Artwork 2 (Side Wall 1 Left): The Chevron Timber Executive Foyer (Monumental 5.8m x 3.8m)
-      const ch6ArtChevron = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch6ArtChevron = createFramedArtMesh(texCh6Chevron, 5.8, 3.8, 0.09, true);
       ch6ArtChevron.group.position.set(-3.5, 3.60, -roomD / 2 + 0.08);
 
       // Artwork 3 (Side Wall 1 Right): The Executive Waiting Lounge (Monumental 5.8m x 3.8m)
-      const ch6ArtFoyer = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch6ArtFoyer = createFramedArtMesh(texCh6Foyer, 5.8, 3.8, 0.09, true);
       ch6ArtFoyer.group.position.set(3.5, 3.60, -roomD / 2 + 0.08);
       roomGroup.add(sideWall1, ch6ArtChevron.group, ch6ArtFoyer.group);
 
@@ -4563,35 +4516,21 @@ export default function ThreeMansionEngine() {
       sideWall2.rotation.y = Math.PI;
 
       // Artwork 4 (Side Wall 2 Left): The Entrance Glass Partition Lobby (Monumental 5.8m x 3.8m)
-      const ch6ArtLobby = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch6ArtLobby = createFramedArtMesh(texCh6Lobby, 5.8, 3.8, 0.09, true);
       ch6ArtLobby.group.position.set(-3.5, 3.60, roomD / 2 - 0.08);
       ch6ArtLobby.group.rotation.y = Math.PI;
 
       // Artwork 5 (Side Wall 2 Right): The Global Operations Executive Suite (Monumental 5.8m x 3.8m)
-      const ch6ArtWorkstation = createFramedArtMesh(placeholderTex, 5.8, 3.8, 0.09, true);
+      const ch6ArtWorkstation = createFramedArtMesh(texCh6Workstation, 5.8, 3.8, 0.09, true);
       ch6ArtWorkstation.group.position.set(3.5, 3.60, roomD / 2 - 0.08);
       ch6ArtWorkstation.group.rotation.y = Math.PI;
       roomGroup.add(sideWall2, ch6ArtLobby.group, ch6ArtWorkstation.group);
 
       // Warm directional wall illumination
       const lobbySpot = new THREE.SpotLight(0xffecd0, 1.8, 16, Math.PI / 3, 0.45);
-      lobbySpot.position.set(2.0, roomH - 0.4, 0);
+      lobbySpot.position.set(xDoor + 2.0, roomH - 0.4, zCenter);
       lobbySpot.target = ch6HeroArt.group;
-      roomGroup.add(lobbySpot);
-
-      // Register Chamber 6 Artwork Texture Streamer
-      chamberStreamers.push({
-        id: "corporate_lobby",
-        centerProgress: 0.97,
-        slots: [
-          { mat: ch6HeroArt.canvasMat, url: "/assets/exhibition/ch6_reception.jpg" },
-          { mat: ch6ArtChevron.canvasMat, url: "/assets/exhibition/ch6_chevron.jpg" },
-          { mat: ch6ArtFoyer.canvasMat, url: "/assets/exhibition/ch6_foyer.jpg" },
-          { mat: ch6ArtLobby.canvasMat, url: "/assets/exhibition/ch6_lobby.jpg" },
-          { mat: ch6ArtWorkstation.canvasMat, url: "/assets/exhibition/ch6_workstation.jpg" },
-        ],
-        isLoaded: false,
-      });
+      chamberLightsGroup.add(lobbySpot);
 
       hallwayGroup.add(roomGroup);
       return roomGroup;
@@ -4719,8 +4658,6 @@ export default function ThreeMansionEngine() {
     };
 
     // --- 10. PRE-WARM GPU: PRELOAD TEXTURES & SHADERS ACROSS ALL WAYPOINTS ---
-    // Pre-uploads all textures to VRAM and pre-compiles WebGL shaders for all chambers
-    // completely eliminating mid-scroll shader compilation spikes.
     const allTextures = [
       calacattaMarbleTex,
       italianBlackMarbleTex,
@@ -4729,51 +4666,9 @@ export default function ThreeMansionEngine() {
       fineLimestoneTex,
       honeyFlutedOakTex,
       ...allMuralTextures,
-      placeholderTex,
+      ...allChamberTextures,
+      ...allExhibitionArtTextures,
     ];
-
-    const warmUpGPU = () => {
-      allTextures.forEach((tex) => {
-        try {
-          const img = tex?.image as { complete?: boolean; width?: number } | undefined;
-          if (img && (img.complete || (img.width && img.width > 0))) {
-            renderer.initTexture(tex);
-          }
-        } catch (_) {}
-      });
-
-      // Temporarily reveal hallwayGroup & all chambers so compile reaches all geometry & lights
-      hallwayGroup.visible = true;
-      [chamber1Group, chamber2Group, chamber3Group, chamber4Group, chamber5Group, chamber6Group].forEach((g) => {
-        if (g) g.visible = true;
-      });
-
-      // Compile across sample waypoints (hallway, Chamber I, II, III, IV, V, VI)
-      const sampleWaypoints = [0.0, 0.15, 0.32, 0.49, 0.66, 0.83, 0.97];
-      for (const t of sampleWaypoints) {
-        const { pos, look } = getCameraTrajectory(t);
-        camera.position.copy(pos);
-        camera.lookAt(look);
-        camera.updateMatrixWorld();
-        renderer.compile(scene, camera);
-      }
-
-      // Reset camera to initial door sequence position outside closed doors
-      camera.position.set(0, 2.85, 14.5);
-      camera.lookAt(0, 3.10, 8.2);
-      camera.updateMatrixWorld();
-
-      // After GPU compile warmup, fully hide hallwayGroup & all chambers while at the entrance door
-      hallwayGroup.visible = false;
-      if (chamber1Group) chamber1Group.visible = false;
-      if (chamber2Group) chamber2Group.visible = false;
-      if (chamber3Group) chamber3Group.visible = false;
-      if (chamber4Group) chamber4Group.visible = false;
-      if (chamber5Group) chamber5Group.visible = false;
-      if (chamber6Group) chamber6Group.visible = false;
-    };
-
-    warmUpGPU();
 
     // --- GRAND ENTRANCE DOOR OPENING, PROGRESSIVE LIGHT REVEAL & SKIP SEQUENCE ---
     const lightingZones = bayLightingFixtures.map((bay) => {
@@ -4838,6 +4733,58 @@ export default function ThreeMansionEngine() {
       floorSpillMat.opacity = 0.42;
       focalLightSpill.intensity = 4.2;
     };
+
+    const warmUpGPU = () => {
+      // 1. Pre-upload all loaded textures to VRAM
+      allTextures.forEach((tex) => {
+        try {
+          const img = tex?.image as { complete?: boolean; width?: number } | undefined;
+          if (img && (img.complete || (img.width && img.width > 0))) {
+            renderer.initTexture(tex);
+          }
+        } catch (_) {}
+      });
+
+      // 2. Reveal hallwayGroup and all 6 chambers so compiler traverses every single material & light
+      hallwayGroup.visible = true;
+      if (chamber1Group) chamber1Group.visible = true;
+      if (chamber2Group) chamber2Group.visible = true;
+      if (chamber3Group) chamber3Group.visible = true;
+      if (chamber4Group) chamber4Group.visible = true;
+      if (chamber5Group) chamber5Group.visible = true;
+      if (chamber6Group) chamber6Group.visible = true;
+
+      // 3. Ignite full mansion illumination so shaders are compiled for active lit conditions
+      const wasIntroComplete = sceneStateRef.current.introComplete;
+      snapAllLightsToFull();
+
+      // 4. Compile across full mansion trajectory (hallway, Chamber I, II, III, IV, V, VI)
+      const sampleWaypoints = [0.0, 0.08, 0.15, 0.23, 0.32, 0.41, 0.49, 0.58, 0.66, 0.75, 0.83, 0.90, 0.97];
+      for (const t of sampleWaypoints) {
+        const { pos, look } = getCameraTrajectory(t);
+        camera.position.copy(pos);
+        camera.lookAt(look);
+        camera.updateMatrixWorld();
+        renderer.compile(scene, camera);
+      }
+
+      // 5. If door is still loading or ready, restore pre-door state outside closed doors
+      if (sceneStateRef.current.doorState === "loading" || sceneStateRef.current.doorState === "ready") {
+        hallwayGroup.visible = false;
+        camera.position.set(0, 2.85, 14.5);
+        camera.lookAt(0, 3.10, 8.2);
+        camera.updateMatrixWorld();
+        if (!wasIntroComplete) {
+          sceneStateRef.current.introComplete = false;
+          mainSun.intensity = 0.0;
+          fillSun.intensity = 0.0;
+          ceilingUpLight.intensity = 0.0;
+        }
+      }
+    };
+
+    triggerWarmUpGPU = warmUpGPU;
+    warmUpGPU();
 
     const runHallwayLightSequence = () => {
       if (sceneStateRef.current.isLightingSequence) return;
@@ -4975,6 +4922,7 @@ export default function ThreeMansionEngine() {
 
     const openDoorSequence = () => {
       if (sceneStateRef.current.doorState !== "ready") return;
+      warmUpGPU();
       sceneStateRef.current.doorState = "opening";
       setDoorState("opening");
 
@@ -5044,9 +4992,15 @@ export default function ThreeMansionEngine() {
         tl.to(bMat, { opacity: 0.0, duration: 0.35, ease: "power2.out" }, 0.20);
       }
 
-      // 4. Reveal interior hallway meshes at t = 0.30s so moonlit architecture is seen through parting doors
+      // 4. Reveal interior hallway meshes and all chambers at t = 0.30s so moonlit architecture is seen through parting doors
       tl.call(() => {
         hallwayGroup.visible = true;
+        if (chamber1Group) chamber1Group.visible = true;
+        if (chamber2Group) chamber2Group.visible = true;
+        if (chamber3Group) chamber3Group.visible = true;
+        if (chamber4Group) chamber4Group.visible = true;
+        if (chamber5Group) chamber5Group.visible = true;
+        if (chamber6Group) chamber6Group.visible = true;
       }, [], 0.30);
 
       // 5. Camera pushes forward through doorway into hallway 0.25s -> 1.45s (smooth glide)
@@ -5186,12 +5140,19 @@ export default function ThreeMansionEngine() {
       dRefs.cameraLook.set(0, 2.4, -18.0);
 
       hallwayGroup.visible = true;
+      if (chamber1Group) chamber1Group.visible = true;
+      if (chamber2Group) chamber2Group.visible = true;
+      if (chamber3Group) chamber3Group.visible = true;
+      if (chamber4Group) chamber4Group.visible = true;
+      if (chamber5Group) chamber5Group.visible = true;
+      if (chamber6Group) chamber6Group.visible = true;
 
       if (dRefs.doorGroup) {
         dRefs.doorGroup.visible = false;
       }
 
       snapAllLightsToFull();
+      warmUpGPU();
 
       setDoorUIFading(true);
       setDoorUIHidden(true);
@@ -5368,7 +5329,14 @@ export default function ThreeMansionEngine() {
         doorAnimationRef.current.doorGroup.visible = false;
       }
       hallwayGroup.visible = true;
+      if (chamber1Group) chamber1Group.visible = true;
+      if (chamber2Group) chamber2Group.visible = true;
+      if (chamber3Group) chamber3Group.visible = true;
+      if (chamber4Group) chamber4Group.visible = true;
+      if (chamber5Group) chamber5Group.visible = true;
+      if (chamber6Group) chamber6Group.visible = true;
       snapAllLightsToFull();
+      warmUpGPU();
       setIsDoorOpen(true);
       setDoorState("opened");
       state.targetProgress = THREE.MathUtils.clamp(prog, 0, 1);
@@ -5558,14 +5526,15 @@ export default function ThreeMansionEngine() {
         const smoothRate = 1.0 - Math.exp(-9.5 * dt);
         state.currentProgress += (state.targetProgress - state.currentProgress) * smoothRate;
         const p = Math.max(0, Math.min(1, state.currentProgress));
-
-        // Spatial chamber visibility culling: only keep chamber visible when near its portal
-        const c1Vis = p >= 0.05 && p <= 0.25;
-        const c2Vis = p >= 0.22 && p <= 0.42;
-        const c3Vis = p >= 0.39 && p <= 0.59;
-        const c4Vis = p >= 0.56 && p <= 0.76;
-        const c5Vis = p >= 0.73 && p <= 0.91;
-        const c6Vis = p >= 0.88 && p <= 1.00;
+        // Spatial chamber geometry culling: only render chamber geometry when near its portal
+        // Since all chamber lights are in permanentChamberLights, light counts NEVER change,
+        // so WebGLProgram cache remains 100% constant while cutting 700 draw calls!
+        const c1Vis = p >= 0.04 && p <= 0.26;
+        const c2Vis = p >= 0.21 && p <= 0.43;
+        const c3Vis = p >= 0.38 && p <= 0.60;
+        const c4Vis = p >= 0.55 && p <= 0.77;
+        const c5Vis = p >= 0.72 && p <= 0.92;
+        const c6Vis = p >= 0.87 && p <= 1.00;
 
         if (chamber1Group && chamber1Group.visible !== c1Vis) chamber1Group.visible = c1Vis;
         if (chamber2Group && chamber2Group.visible !== c2Vis) chamber2Group.visible = c2Vis;
@@ -5574,16 +5543,7 @@ export default function ThreeMansionEngine() {
         if (chamber5Group && chamber5Group.visible !== c5Vis) chamber5Group.visible = c5Vis;
         if (chamber6Group && chamber6Group.visible !== c6Vis) chamber6Group.visible = c6Vis;
 
-        // Dynamic Chamber Texture Streaming: pre-load 4K textures for current and adjacent chamber, unload distant chambers
-        chamberStreamers.forEach((ch) => {
-          const dist = Math.abs(p - ch.centerProgress);
-          if (dist <= 0.20) {
-            loadChamberTextures(ch);
-          } else if (dist > 0.26) {
-            unloadChamberTextures(ch);
-          }
-        });
-
+        (window as any).__currentProgress = p;
         // Direct DOM progress bar and indicator updates - 0 React re-renders during 60FPS scroll
         const pct = Math.round(p * 100);
         if (progressLineRef.current) {
@@ -5923,8 +5883,10 @@ export default function ThreeMansionEngine() {
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={art.image}
+                        src={art.thumbnail || art.image.replace("/assets/exhibition/", "/assets/exhibition/thumbs/")}
                         alt={art.title}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
                       <div

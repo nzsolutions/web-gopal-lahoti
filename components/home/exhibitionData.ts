@@ -6,6 +6,7 @@ export interface ExhibitionArtwork {
   location: string;
   category: string;
   image: string;
+  thumbnail?: string;
   description: string;
   materials: string[];
   dimensions: string;
