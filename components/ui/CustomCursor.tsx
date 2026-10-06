@@ -83,19 +83,19 @@ export default function CustomCursor() {
           y: smoothY,
           translateX: "-50%",
           translateY: "-50%",
+          willChange: "transform",
         }}
         animate={{
           width: cursorText ? 84 : isHovered ? 48 : 12,
           height: cursorText ? 84 : isHovered ? 48 : 12,
           backgroundColor: cursorText
-            ? "rgba(197, 168, 128, 0.9)"
+            ? "rgba(197, 168, 128, 0.95)"
             : isHovered
-            ? "rgba(245, 242, 235, 0.15)"
+            ? "rgba(245, 242, 235, 0.22)"
             : "#c5a880",
-          border: isHovered && !cursorText ? "1px solid rgba(197, 168, 128, 0.6)" : "none",
-          backdropFilter: cursorText || isHovered ? "blur(4px)" : "none",
+          border: isHovered && !cursorText ? "1px solid rgba(197, 168, 128, 0.7)" : "none",
         }}
-        transition={{ type: "spring", damping: 20, stiffness: 300 }}
+        transition={{ type: "spring", damping: 24, stiffness: 350 }}
       >
         {cursorText && (
           <span className="text-[10px] uppercase font-sans tracking-widest font-semibold text-luxury-bg text-center px-2">
