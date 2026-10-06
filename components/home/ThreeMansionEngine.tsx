@@ -3928,6 +3928,1139 @@ export default function ThreeMansionEngine() {
     chamberLightsGroup.name = "permanentChamberLights";
     hallwayGroup.add(chamberLightsGroup);
 
+    // --- STATEMENT CHANDELIER & CURATED ARTIFACT MATERIALS ---
+    const crystalSparkleMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.08,
+      metalness: 0.15,
+      emissive: 0xfff6ea,
+      emissiveIntensity: 0.35,
+      fog: false,
+    });
+
+    const chandelierGlowMat = new THREE.MeshBasicMaterial({
+      color: 0xfff8e7,
+    });
+
+    const templeFlameMat = new THREE.MeshBasicMaterial({
+      color: 0xff9a24,
+    });
+
+    const porcelainCobaltMat = new THREE.MeshStandardMaterial({
+      color: 0x14223d,
+      roughness: 0.12,
+      metalness: 0.15,
+      fog: false,
+    });
+
+    const cognacBlotterMat = new THREE.MeshStandardMaterial({
+      color: 0x8a451e,
+      roughness: 0.38,
+      metalness: 0.05,
+      fog: false,
+    });
+
+    const safeMerge = (geos: THREE.BufferGeometry[], mat: THREE.Material): THREE.Mesh | null => {
+      if (!geos || geos.length === 0) return null;
+      try {
+        const hasIndex = geos.some((g) => g.index !== null);
+        const hasNonIndex = geos.some((g) => g.index === null);
+        let normalizedGeos = geos;
+        let needsDispose = false;
+        if (hasIndex && hasNonIndex) {
+          normalizedGeos = geos.map((g) => (g.index ? g.toNonIndexed() : g));
+          needsDispose = true;
+        }
+        const merged = BufferGeometryUtils.mergeGeometries(normalizedGeos, false);
+        geos.forEach((g) => g.dispose());
+        if (needsDispose) {
+          normalizedGeos.forEach((g) => g.dispose());
+        }
+        if (!merged) return null;
+        return new THREE.Mesh(merged, mat);
+      } catch (err) {
+        console.warn("safeMerge failed:", err);
+        return null;
+      }
+    };
+
+    // 1. Grand Tiered Crystal & Brass Chandelier (Chamber I: Grand Living)
+    const buildTieredCrystalChandelier = (
+      roomGroup: THREE.Group,
+      localX: number,
+      localY: number,
+      localZ: number,
+      worldX: number,
+      worldY: number,
+      worldZ: number
+    ) => {
+      const group = new THREE.Group();
+      group.position.set(localX, localY, localZ);
+
+      const brassGeos: THREE.BufferGeometry[] = [];
+      const crystalGeos: THREE.BufferGeometry[] = [];
+      const glowGeos: THREE.BufferGeometry[] = [];
+
+      const ceilingH = 7.2 - localY;
+      const medallionGeo = new THREE.CylinderGeometry(0.48, 0.52, 0.06, 24);
+      medallionGeo.translate(0, ceilingH - 0.03, 0);
+      brassGeos.push(medallionGeo);
+
+      const rodGeo = new THREE.CylinderGeometry(0.02, 0.02, Math.max(0.2, ceilingH - 0.5), 12);
+      rodGeo.translate(0, (ceilingH + 0.5) / 2, 0);
+      brassGeos.push(rodGeo);
+
+      const urnGeo = new THREE.CylinderGeometry(0.12, 0.08, 0.6, 16);
+      urnGeo.translate(0, 0.5, 0);
+      brassGeos.push(urnGeo);
+
+      const tiers = [
+        { radius: 0.75, y: 0.60, count: 18, prismH: 0.40, prismR: 0.032 },
+        { radius: 1.25, y: 0.20, count: 26, prismH: 0.50, prismR: 0.035 },
+        { radius: 1.75, y: -0.25, count: 34, prismH: 0.62, prismR: 0.038 },
+      ];
+
+      tiers.forEach((tier) => {
+        const ringGeo = new THREE.TorusGeometry(tier.radius, 0.025, 12, 32);
+        ringGeo.rotateX(Math.PI / 2);
+        ringGeo.translate(0, tier.y, 0);
+        brassGeos.push(ringGeo);
+
+        for (let s = 0; s < 4; s++) {
+          const angle = (s * Math.PI) / 2;
+          const spokeGeo = new THREE.CylinderGeometry(0.012, 0.012, tier.radius, 8);
+          spokeGeo.rotateZ(Math.PI / 2);
+          spokeGeo.rotateY(angle);
+          spokeGeo.translate((Math.cos(angle) * tier.radius) / 2, tier.y, (Math.sin(angle) * tier.radius) / 2);
+          brassGeos.push(spokeGeo);
+        }
+
+        for (let i = 0; i < tier.count; i++) {
+          const a = (i / tier.count) * Math.PI * 2;
+          const px = Math.cos(a) * tier.radius;
+          const pz = Math.sin(a) * tier.radius;
+
+          const loopGeo = new THREE.SphereGeometry(0.016, 8, 8);
+          loopGeo.translate(px, tier.y - 0.02, pz);
+          brassGeos.push(loopGeo);
+
+          const prismGeo = new THREE.CylinderGeometry(tier.prismR, tier.prismR * 0.7, tier.prismH, 8);
+          prismGeo.translate(px, tier.y - 0.02 - tier.prismH / 2, pz);
+          crystalGeos.push(prismGeo);
+
+          const tipGeo = new THREE.ConeGeometry(tier.prismR * 0.7, tier.prismR * 1.5, 8);
+          tipGeo.rotateX(Math.PI);
+          tipGeo.translate(px, tier.y - 0.02 - tier.prismH - (tier.prismR * 1.5) / 2, pz);
+          crystalGeos.push(tipGeo);
+        }
+      });
+
+      const candleCount = 14;
+      for (let c = 0; c < candleCount; c++) {
+        const a = (c / candleCount) * Math.PI * 2;
+        const cx = Math.cos(a) * 1.25;
+        const cz = Math.sin(a) * 1.25;
+
+        const saucerGeo = new THREE.CylinderGeometry(0.055, 0.03, 0.02, 12);
+        saucerGeo.translate(cx, 0.22, cz);
+        brassGeos.push(saucerGeo);
+
+        const sleeveGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.12, 12);
+        sleeveGeo.translate(cx, 0.29, cz);
+        brassGeos.push(sleeveGeo);
+
+        const bulbGeo = new THREE.ConeGeometry(0.018, 0.05, 10);
+        bulbGeo.translate(cx, 0.37, cz);
+        glowGeos.push(bulbGeo);
+      }
+
+      const brassMesh = safeMerge(brassGeos, antiqueGoldMat);
+      if (brassMesh) group.add(brassMesh);
+
+      const crystalMesh = safeMerge(crystalGeos, crystalSparkleMat);
+      if (crystalMesh) group.add(crystalMesh);
+
+      const glowMesh = safeMerge(glowGeos, chandelierGlowMat);
+      if (glowMesh) group.add(glowMesh);
+
+      roomGroup.add(group);
+
+      const chLight = new THREE.PointLight(0xfff0d6, 0.75, 9.5, 2.0);
+      chLight.position.set(worldX, worldY, worldZ);
+      chamberLightsGroup.add(chLight);
+
+      return group;
+    };
+
+    // 2. Crystal Drop Cluster Chandelier (Chamber II: Versace Suite)
+    const buildClusterDropChandelier = (
+      roomGroup: THREE.Group,
+      localX: number,
+      localY: number,
+      localZ: number,
+      worldX: number,
+      worldY: number,
+      worldZ: number
+    ) => {
+      const group = new THREE.Group();
+      group.position.set(localX, localY, localZ);
+
+      const brassGeos: THREE.BufferGeometry[] = [];
+      const crystalGeos: THREE.BufferGeometry[] = [];
+      const glowGeos: THREE.BufferGeometry[] = [];
+
+      const ceilingH = 7.2 - localY;
+      const canopyGeo = new THREE.CylinderGeometry(1.25, 1.25, 0.04, 32);
+      canopyGeo.translate(0, ceilingH - 0.02, 0);
+      brassGeos.push(canopyGeo);
+
+      const dropConfigs = [
+        { ringR: 0.30, count: 6, baseDrop: 1.8, var: 0.25 },
+        { ringR: 0.68, count: 8, baseDrop: 2.2, var: 0.35 },
+        { ringR: 1.05, count: 10, baseDrop: 2.6, var: 0.40 },
+      ];
+
+      let dropIdx = 0;
+      dropConfigs.forEach((cfg) => {
+        for (let i = 0; i < cfg.count; i++) {
+          const a = (i / cfg.count) * Math.PI * 2 + (dropIdx % 2 ? 0.2 : 0);
+          const px = Math.cos(a) * cfg.ringR;
+          const pz = Math.sin(a) * cfg.ringR;
+          const dropLen = cfg.baseDrop + Math.sin(dropIdx * 1.7) * cfg.var;
+          const dropBottomY = ceilingH - dropLen;
+
+          const cableGeo = new THREE.CylinderGeometry(0.004, 0.004, dropLen - 0.35, 6);
+          cableGeo.translate(px, ceilingH - (dropLen - 0.35) / 2, pz);
+          brassGeos.push(cableGeo);
+
+          const fittingGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.08, 12);
+          fittingGeo.translate(px, dropBottomY + 0.35, pz);
+          brassGeos.push(fittingGeo);
+
+          const crystalGeo = new THREE.CylinderGeometry(0.034, 0.028, 0.32, 8);
+          crystalGeo.translate(px, dropBottomY + 0.18, pz);
+          crystalGeos.push(crystalGeo);
+
+          const finialGeo = new THREE.ConeGeometry(0.028, 0.08, 8);
+          finialGeo.rotateX(Math.PI);
+          finialGeo.translate(px, dropBottomY - 0.04, pz);
+          crystalGeos.push(finialGeo);
+
+          const glowGeo = new THREE.SphereGeometry(0.020, 8, 8);
+          glowGeo.translate(px, dropBottomY + 0.15, pz);
+          glowGeos.push(glowGeo);
+
+          dropIdx++;
+        }
+      });
+
+      const brassMesh = safeMerge(brassGeos, antiqueGoldMat);
+      if (brassMesh) group.add(brassMesh);
+
+      const crystalMesh = safeMerge(crystalGeos, crystalSparkleMat);
+      if (crystalMesh) group.add(crystalMesh);
+
+      const glowMesh = safeMerge(glowGeos, chandelierGlowMat);
+      if (glowMesh) group.add(glowMesh);
+
+      roomGroup.add(group);
+
+      const chLight = new THREE.PointLight(0xffebd2, 0.70, 9.0, 2.0);
+      chLight.position.set(worldX, worldY, worldZ);
+      chamberLightsGroup.add(chLight);
+
+      return group;
+    };
+
+    // 3. Ornate Brass Temple Hanging Lamp / Akhand Diya (Chamber III: Sacred Sanctum)
+    const buildTempleHangingLamp = (
+      roomGroup: THREE.Group,
+      localX: number,
+      localY: number,
+      localZ: number,
+      worldX: number,
+      worldY: number,
+      worldZ: number
+    ) => {
+      const group = new THREE.Group();
+      group.position.set(localX, localY, localZ);
+
+      const brassGeos: THREE.BufferGeometry[] = [];
+      const flameGeos: THREE.BufferGeometry[] = [];
+
+      const ceilingH = 7.2 - localY;
+
+      const rosetteGeo = new THREE.CylinderGeometry(0.52, 0.58, 0.06, 24);
+      rosetteGeo.translate(0, ceilingH - 0.03, 0);
+      brassGeos.push(rosetteGeo);
+
+      const rosetteTrim = new THREE.TorusGeometry(0.54, 0.03, 12, 24);
+      rosetteTrim.rotateX(Math.PI / 2);
+      rosetteTrim.translate(0, ceilingH - 0.05, 0);
+      brassGeos.push(rosetteTrim);
+
+      const chainLen = Math.max(0.5, ceilingH - 1.2);
+      const chainR = 0.38;
+      for (let c = 0; c < 4; c++) {
+        const a = (c * Math.PI) / 2 + Math.PI / 4;
+        const cx = Math.cos(a) * chainR;
+        const cz = Math.sin(a) * chainR;
+
+        const chainGeo = new THREE.CylinderGeometry(0.014, 0.014, chainLen, 8);
+        chainGeo.translate(cx, ceilingH - chainLen / 2, cz);
+        brassGeos.push(chainGeo);
+
+        for (let l = 0; l < 4; l++) {
+          const linkGeo = new THREE.TorusGeometry(0.032, 0.008, 8, 16);
+          linkGeo.translate(cx, ceilingH - (chainLen * (l + 1)) / 5, cz);
+          brassGeos.push(linkGeo);
+        }
+      }
+
+      const domeGeo = new THREE.CylinderGeometry(0.18, 0.46, 0.42, 24);
+      domeGeo.translate(0, 1.0, 0);
+      brassGeos.push(domeGeo);
+
+      const domeTrim = new THREE.TorusGeometry(0.48, 0.025, 12, 24);
+      domeTrim.rotateX(Math.PI / 2);
+      domeTrim.translate(0, 0.79, 0);
+      brassGeos.push(domeTrim);
+
+      const bowlGeo = new THREE.CylinderGeometry(0.68, 0.28, 0.26, 24);
+      bowlGeo.translate(0, 0.65, 0);
+      brassGeos.push(bowlGeo);
+
+      const rimGeo = new THREE.TorusGeometry(0.70, 0.03, 12, 32);
+      rimGeo.rotateX(Math.PI / 2);
+      rimGeo.translate(0, 0.78, 0);
+      brassGeos.push(rimGeo);
+
+      const wickCount = 8;
+      for (let w = 0; w < wickCount; w++) {
+        const a = (w / wickCount) * Math.PI * 2;
+        const wx = Math.cos(a) * 0.72;
+        const wz = Math.sin(a) * 0.72;
+
+        const spoutGeo = new THREE.BoxGeometry(0.06, 0.03, 0.08);
+        spoutGeo.rotateY(-a);
+        spoutGeo.translate(wx, 0.78, wz);
+        brassGeos.push(spoutGeo);
+
+        const flameGeo = new THREE.ConeGeometry(0.035, 0.12, 12);
+        flameGeo.translate(wx * 1.04, 0.86, wz * 1.04);
+        flameGeos.push(flameGeo);
+      }
+
+      const finialGeo = new THREE.CylinderGeometry(0.24, 0.08, 0.35, 16);
+      finialGeo.translate(0, 0.35, 0);
+      brassGeos.push(finialGeo);
+
+      const dropFinialGeo = new THREE.SphereGeometry(0.07, 12, 12);
+      dropFinialGeo.translate(0, 0.14, 0);
+      brassGeos.push(dropFinialGeo);
+
+      for (let b = 0; b < 8; b++) {
+        const a = (b / 8) * Math.PI * 2 + Math.PI / 8;
+        const bx = Math.cos(a) * 0.68;
+        const bz = Math.sin(a) * 0.68;
+
+        const miniChain = new THREE.CylinderGeometry(0.005, 0.005, 0.14, 6);
+        miniChain.translate(bx, 0.58, bz);
+        brassGeos.push(miniChain);
+
+        const bellGeo = new THREE.CylinderGeometry(0.02, 0.045, 0.07, 12);
+        bellGeo.translate(bx, 0.48, bz);
+        brassGeos.push(bellGeo);
+      }
+
+      const brassMesh = safeMerge(brassGeos, antiqueGoldMat);
+      if (brassMesh) group.add(brassMesh);
+
+      const flameMesh = safeMerge(flameGeos, templeFlameMat);
+      if (flameMesh) group.add(flameMesh);
+
+      roomGroup.add(group);
+
+      const chLight = new THREE.PointLight(0xff9e28, 0.85, 8.5, 2.0);
+      chLight.position.set(worldX, worldY, worldZ);
+      chamberLightsGroup.add(chLight);
+
+      return group;
+    };
+
+    // 4. Sleek Linear Executive Chandelier (Chamber IV: Executive Boardroom)
+    const buildLinearExecutiveChandelier = (
+      roomGroup: THREE.Group,
+      localX: number,
+      localY: number,
+      localZ: number,
+      worldX: number,
+      worldY: number,
+      worldZ: number
+    ) => {
+      const group = new THREE.Group();
+      group.position.set(localX, localY, localZ);
+
+      const brassGeos: THREE.BufferGeometry[] = [];
+      const glassGeos: THREE.BufferGeometry[] = [];
+      const glowGeos: THREE.BufferGeometry[] = [];
+
+      const ceilingH = 7.2 - localY;
+
+      const can1 = new THREE.CylinderGeometry(0.12, 0.12, 0.03, 16);
+      can1.translate(0, ceilingH - 0.015, -1.1);
+      const can2 = new THREE.CylinderGeometry(0.12, 0.12, 0.03, 16);
+      can2.translate(0, ceilingH - 0.015, 1.1);
+      brassGeos.push(can1, can2);
+
+      const cable1 = new THREE.CylinderGeometry(0.005, 0.005, ceilingH - 0.08, 8);
+      cable1.translate(0, (ceilingH - 0.08) / 2, -1.1);
+      const cable2 = new THREE.CylinderGeometry(0.005, 0.005, ceilingH - 0.08, 8);
+      cable2.translate(0, (ceilingH - 0.08) / 2, 1.1);
+      brassGeos.push(cable1, cable2);
+
+      const barGeo = new THREE.BoxGeometry(0.14, 0.12, 3.2);
+      barGeo.translate(0, 0.06, 0);
+      brassGeos.push(barGeo);
+
+      const cap1 = new THREE.BoxGeometry(0.16, 0.14, 0.04);
+      cap1.translate(0, 0.06, -1.62);
+      const cap2 = new THREE.BoxGeometry(0.16, 0.14, 0.04);
+      cap2.translate(0, 0.06, 1.62);
+      brassGeos.push(cap1, cap2);
+
+      const ledGeo = new THREE.BoxGeometry(0.08, 0.015, 3.0);
+      ledGeo.translate(0, -0.005, 0);
+      glowGeos.push(ledGeo);
+
+      const louverCount = 24;
+      for (let i = 0; i < louverCount; i++) {
+        const lz = -1.38 + (i / (louverCount - 1)) * 2.76;
+        const louverGeo = new THREE.BoxGeometry(0.24, 0.38, 0.032);
+        louverGeo.translate(0, -0.20, lz);
+        glassGeos.push(louverGeo);
+
+        const clampGeo = new THREE.BoxGeometry(0.16, 0.03, 0.04);
+        clampGeo.translate(0, -0.015, lz);
+        brassGeos.push(clampGeo);
+      }
+
+      const brassMesh = safeMerge(brassGeos, antiqueGoldMat);
+      if (brassMesh) group.add(brassMesh);
+
+      const glassMesh = safeMerge(glassGeos, smokedCrystalMat);
+      if (glassMesh) group.add(glassMesh);
+
+      const glowMesh = safeMerge(glowGeos, chandelierGlowMat);
+      if (glowMesh) group.add(glowMesh);
+
+      roomGroup.add(group);
+
+      const chLight = new THREE.PointLight(0xffeed8, 0.65, 9.0, 2.0);
+      chLight.position.set(worldX, worldY, worldZ);
+      chamberLightsGroup.add(chLight);
+
+      return group;
+    };
+
+    // 5. Monumental Royal Cascade Chandelier (Chamber V: Royal Salon)
+    const buildRoyalCascadeChandelier = (
+      roomGroup: THREE.Group,
+      localX: number,
+      localY: number,
+      localZ: number,
+      worldX: number,
+      worldY: number,
+      worldZ: number
+    ) => {
+      const group = new THREE.Group();
+      group.position.set(localX, localY, localZ);
+
+      const brassGeos: THREE.BufferGeometry[] = [];
+      const crystalGeos: THREE.BufferGeometry[] = [];
+      const flameGeos: THREE.BufferGeometry[] = [];
+
+      const ceilingH = 7.2 - localY;
+
+      const rosette = new THREE.CylinderGeometry(0.68, 0.76, 0.08, 24);
+      rosette.translate(0, ceilingH - 0.04, 0);
+      brassGeos.push(rosette);
+
+      const rosetteMoulding = new THREE.TorusGeometry(0.72, 0.04, 12, 24);
+      rosetteMoulding.rotateX(Math.PI / 2);
+      rosetteMoulding.translate(0, ceilingH - 0.07, 0);
+      brassGeos.push(rosetteMoulding);
+
+      const stem = new THREE.CylinderGeometry(0.035, 0.035, Math.max(0.4, ceilingH - 1.2), 12);
+      stem.translate(0, (ceilingH + 1.2) / 2, 0);
+      brassGeos.push(stem);
+
+      const urn1 = new THREE.CylinderGeometry(0.18, 0.28, 0.5, 16);
+      urn1.translate(0, 1.2, 0);
+      const urn2 = new THREE.CylinderGeometry(0.32, 0.16, 0.6, 16);
+      urn2.translate(0, 0.7, 0);
+      const urn3 = new THREE.CylinderGeometry(0.22, 0.38, 0.45, 16);
+      urn3.translate(0, 0.25, 0);
+      brassGeos.push(urn1, urn2, urn3);
+
+      const collar1 = new THREE.TorusGeometry(0.26, 0.045, 12, 24);
+      collar1.rotateX(Math.PI / 2);
+      collar1.translate(0, 0.95, 0);
+      const collar2 = new THREE.TorusGeometry(0.36, 0.05, 12, 24);
+      collar2.rotateX(Math.PI / 2);
+      collar2.translate(0, 0.45, 0);
+      crystalGeos.push(collar1, collar2);
+
+      const armTiers = [
+        { radius: 0.95, y: 1.15, count: 6, armThick: 0.02 },
+        { radius: 1.55, y: 0.65, count: 8, armThick: 0.024 },
+        { radius: 2.15, y: 0.15, count: 12, armThick: 0.028 },
+      ];
+
+      armTiers.forEach((tier) => {
+        const ringGeo = new THREE.TorusGeometry(tier.radius * 0.45, 0.03, 12, 24);
+        ringGeo.rotateX(Math.PI / 2);
+        ringGeo.translate(0, tier.y - 0.1, 0);
+        brassGeos.push(ringGeo);
+
+        for (let aIdx = 0; aIdx < tier.count; aIdx++) {
+          const angle = (aIdx / tier.count) * Math.PI * 2;
+          const ax = Math.cos(angle) * tier.radius;
+          const az = Math.sin(angle) * tier.radius;
+
+          const armMidR = tier.radius * 0.6;
+          const armMidY = tier.y - 0.22;
+          const mx = Math.cos(angle) * armMidR;
+          const mz = Math.sin(angle) * armMidR;
+
+          const seg1 = new THREE.CylinderGeometry(tier.armThick, tier.armThick, armMidR, 8);
+          seg1.rotateZ(Math.PI / 2.8);
+          seg1.rotateY(-angle);
+          seg1.translate(mx / 2, (tier.y + armMidY) / 2, mz / 2);
+          brassGeos.push(seg1);
+
+          const outerLen = tier.radius - armMidR;
+          const seg2 = new THREE.CylinderGeometry(tier.armThick, tier.armThick, outerLen * 1.3, 8);
+          seg2.rotateZ(-Math.PI / 3);
+          seg2.rotateY(-angle);
+          seg2.translate((mx + ax) / 2, (armMidY + tier.y) / 2, (mz + az) / 2);
+          brassGeos.push(seg2);
+
+          const bobeche = new THREE.CylinderGeometry(0.08, 0.04, 0.035, 12);
+          bobeche.translate(ax, tier.y, az);
+          crystalGeos.push(bobeche);
+
+          const sleeve = new THREE.CylinderGeometry(0.018, 0.018, 0.16, 10);
+          sleeve.translate(ax, tier.y + 0.10, az);
+          brassGeos.push(sleeve);
+
+          const flame = new THREE.ConeGeometry(0.022, 0.065, 10);
+          flame.translate(ax, tier.y + 0.21, az);
+          flameGeos.push(flame);
+
+          const dropPrism = new THREE.CylinderGeometry(0.028, 0.014, 0.24, 8);
+          dropPrism.translate(ax, tier.y - 0.14, az);
+          crystalGeos.push(dropPrism);
+        }
+      });
+
+      const swagRing = new THREE.TorusGeometry(1.85, 0.028, 8, 32);
+      swagRing.rotateX(Math.PI / 2);
+      swagRing.translate(0, 0.02, 0);
+      crystalGeos.push(swagRing);
+
+      const bottomBall = new THREE.SphereGeometry(0.12, 16, 16);
+      bottomBall.translate(0, -0.05, 0);
+      const bottomSpear = new THREE.ConeGeometry(0.08, 0.32, 10);
+      bottomSpear.rotateX(Math.PI);
+      bottomSpear.translate(0, -0.28, 0);
+      crystalGeos.push(bottomBall, bottomSpear);
+
+      const brassMesh = safeMerge(brassGeos, antiqueGoldMat);
+      if (brassMesh) group.add(brassMesh);
+
+      const crystalMesh = safeMerge(crystalGeos, crystalSparkleMat);
+      if (crystalMesh) group.add(crystalMesh);
+
+      const flameMesh = safeMerge(flameGeos, chandelierGlowMat);
+      if (flameMesh) group.add(flameMesh);
+
+      roomGroup.add(group);
+
+      const chLight = new THREE.PointLight(0xfff2d4, 0.90, 11.0, 2.0);
+      chLight.position.set(worldX, worldY, worldZ);
+      chamberLightsGroup.add(chLight);
+
+      return group;
+    };
+
+    // 6. Modern Sculptural Orbital Pendant (Chamber VI: Corporate Reception)
+    const buildModernOrbitalPendant = (
+      roomGroup: THREE.Group,
+      localX: number,
+      localY: number,
+      localZ: number,
+      worldX: number,
+      worldY: number,
+      worldZ: number
+    ) => {
+      const group = new THREE.Group();
+      group.position.set(localX, localY, localZ);
+
+      const brassGeos: THREE.BufferGeometry[] = [];
+      const ledGeos: THREE.BufferGeometry[] = [];
+
+      const ceilingH = 7.2 - localY;
+
+      const canopy = new THREE.CylinderGeometry(0.38, 0.38, 0.03, 24);
+      canopy.translate(0, ceilingH - 0.015, 0);
+      brassGeos.push(canopy);
+
+      for (let w = 0; w < 4; w++) {
+        const a = (w * Math.PI) / 2;
+        const wx = Math.cos(a) * 0.28;
+        const wz = Math.sin(a) * 0.28;
+        const wire = new THREE.CylinderGeometry(0.004, 0.004, Math.max(0.3, ceilingH - 0.5), 6);
+        wire.translate(wx, (ceilingH + 0.5) / 2, wz);
+        brassGeos.push(wire);
+      }
+
+      const rings = [
+        { radius: 1.15, tube: 0.035, rotX: 0.42, rotZ: 0.22, y: 0.15 },
+        { radius: 0.82, tube: 0.030, rotX: -0.55, rotZ: 0.45, y: 0.0 },
+        { radius: 0.52, tube: 0.025, rotX: 0.70, rotZ: -0.35, y: -0.15 },
+      ];
+
+      rings.forEach((r) => {
+        const ringGeo = new THREE.TorusGeometry(r.radius, r.tube, 12, 32);
+        ringGeo.rotateX(r.rotX);
+        ringGeo.rotateZ(r.rotZ);
+        ringGeo.translate(0, r.y, 0);
+        brassGeos.push(ringGeo);
+
+        const ledGeo = new THREE.TorusGeometry(r.radius - r.tube * 0.7, r.tube * 0.45, 10, 32);
+        ledGeo.rotateX(r.rotX);
+        ledGeo.rotateZ(r.rotZ);
+        ledGeo.translate(0, r.y, 0);
+        ledGeos.push(ledGeo);
+      });
+
+      const brassMesh = safeMerge(brassGeos, sculpturalBronzeDeskMat);
+      if (brassMesh) group.add(brassMesh);
+
+      const ledMesh = safeMerge(ledGeos, chandelierGlowMat);
+      if (ledMesh) group.add(ledMesh);
+
+      roomGroup.add(group);
+
+      const chLight = new THREE.PointLight(0xfff4e6, 0.70, 9.0, 2.0);
+      chLight.position.set(worldX, worldY, worldZ);
+      chamberLightsGroup.add(chLight);
+
+      return group;
+    };
+
+    // --- CURATED ARTIFACT & DECOR BUILDERS ---
+    const buildArtBookStack = (parentGroup: THREE.Group, x: number, y: number, z: number, baseRot: number) => {
+      const books = [
+        { w: 0.38, d: 0.28, h: 0.052, rot: baseRot, mat: bookTerracottaMat },
+        { w: 0.36, d: 0.26, h: 0.048, rot: baseRot + 0.14, mat: bookCharcoalMat },
+        { w: 0.34, d: 0.25, h: 0.044, rot: baseRot - 0.10, mat: bookIvoryMat },
+      ];
+
+      let currentY = y;
+      books.forEach((b) => {
+        const bookGroup = new THREE.Group();
+        bookGroup.position.set(x, currentY + b.h / 2, z);
+        bookGroup.rotation.y = b.rot;
+
+        const cover = new THREE.Mesh(new THREE.BoxGeometry(b.w, b.h, b.d), b.mat);
+        const pages = new THREE.Mesh(new THREE.BoxGeometry(b.w - 0.02, b.h - 0.008, b.d - 0.015), bookPaperPagesMat);
+        pages.position.set(0.008, 0, 0);
+        const spine = new THREE.Mesh(new THREE.BoxGeometry(0.006, b.h, b.d * 0.8), antiqueGoldMat);
+        spine.position.set(-b.w / 2 - 0.001, 0, 0);
+
+        bookGroup.add(cover, pages, spine);
+        parentGroup.add(bookGroup);
+        currentY += b.h;
+      });
+    };
+
+    const buildSculpturalCeramicVase = (
+      parentGroup: THREE.Group,
+      x: number,
+      y: number,
+      z: number,
+      vaseMat: THREE.Material,
+      hasBranches: boolean = false
+    ) => {
+      const vaseGroup = new THREE.Group();
+      vaseGroup.position.set(x, y, z);
+
+      const vaseGeos: THREE.BufferGeometry[] = [];
+      const base = new THREE.CylinderGeometry(0.12, 0.14, 0.06, 16);
+      base.translate(0, 0.03, 0);
+      const body = new THREE.CylinderGeometry(0.22, 0.12, 0.35, 20);
+      body.translate(0, 0.23, 0);
+      const neck = new THREE.CylinderGeometry(0.09, 0.22, 0.16, 20);
+      neck.translate(0, 0.48, 0);
+      const lip = new THREE.CylinderGeometry(0.13, 0.09, 0.04, 20);
+      lip.translate(0, 0.58, 0);
+      vaseGeos.push(base, body, neck, lip);
+
+      const vaseMesh = safeMerge(vaseGeos, vaseMat);
+      if (vaseMesh) vaseGroup.add(vaseMesh);
+
+      if (hasBranches) {
+        const branchGeos: THREE.BufferGeometry[] = [];
+        const b1 = new THREE.CylinderGeometry(0.006, 0.008, 0.65, 6);
+        b1.rotateZ(0.18);
+        b1.translate(0.05, 0.85, 0);
+        const b2 = new THREE.CylinderGeometry(0.005, 0.007, 0.58, 6);
+        b2.rotateZ(-0.24);
+        b2.translate(-0.06, 0.82, 0.04);
+        branchGeos.push(b1, b2);
+        const branchMesh = safeMerge(branchGeos, darkBronzeMat);
+        if (branchMesh) vaseGroup.add(branchMesh);
+      }
+
+      parentGroup.add(vaseGroup);
+    };
+
+    const buildStatementMirror = (
+      parentGroup: THREE.Group,
+      x: number,
+      y: number,
+      z: number,
+      w: number,
+      h: number,
+      rotY: number,
+      style: "arched" | "baroque" | "versace" | "modern"
+    ) => {
+      const mirrorGroup = new THREE.Group();
+      mirrorGroup.position.set(x, y, z);
+      mirrorGroup.rotation.y = rotY;
+
+      const pane = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mirrorMat);
+      pane.position.set(0, 0, 0.015);
+      mirrorGroup.add(pane);
+
+      const frameGeos: THREE.BufferGeometry[] = [];
+      const borderThick = 0.08;
+      const frameD = 0.04;
+
+      const top = new THREE.BoxGeometry(w + borderThick * 2, borderThick, frameD);
+      top.translate(0, h / 2 + borderThick / 2, 0);
+      const bottom = new THREE.BoxGeometry(w + borderThick * 2, borderThick, frameD);
+      bottom.translate(0, -h / 2 - borderThick / 2, 0);
+      const left = new THREE.BoxGeometry(borderThick, h, frameD);
+      left.translate(-w / 2 - borderThick / 2, 0, 0);
+      const right = new THREE.BoxGeometry(borderThick, h, frameD);
+      right.translate(w / 2 + borderThick / 2, 0, 0);
+      frameGeos.push(top, bottom, left, right);
+
+      if (style === "arched" || style === "baroque") {
+        const crest = new THREE.CylinderGeometry(w * 0.45, w * 0.55, borderThick, 16);
+        crest.rotateX(Math.PI / 2);
+        crest.translate(0, h / 2 + borderThick * 1.5, 0);
+        frameGeos.push(crest);
+      }
+
+      const frameMesh = safeMerge(frameGeos, antiqueGoldMat);
+      if (frameMesh) mirrorGroup.add(frameMesh);
+
+      parentGroup.add(mirrorGroup);
+    };
+
+    const buildBirdSculpture = (parentGroup: THREE.Group, x: number, y: number, z: number) => {
+      const group = new THREE.Group();
+      group.position.set(x, y, z);
+
+      const plinth = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.22, 0.18), neroMarquinaMat);
+      plinth.position.set(0, 0.11, 0);
+      group.add(plinth);
+
+      const brassGeos: THREE.BufferGeometry[] = [];
+      const body = new THREE.ConeGeometry(0.08, 0.24, 8);
+      body.rotateX(-Math.PI / 2.8);
+      body.translate(0, 0.30, 0);
+
+      const head = new THREE.SphereGeometry(0.045, 8, 8);
+      head.translate(0, 0.36, 0.10);
+
+      const perch = new THREE.CylinderGeometry(0.012, 0.012, 0.14, 8);
+      perch.translate(0, 0.24, 0);
+
+      const beak = new THREE.ConeGeometry(0.02, 0.07, 6);
+      beak.rotateX(Math.PI / 2);
+      beak.translate(0, 0.36, 0.16);
+
+      brassGeos.push(body, head, perch, beak);
+      const birdMesh = safeMerge(brassGeos, antiqueGoldMat);
+      if (birdMesh) group.add(birdMesh);
+
+      parentGroup.add(group);
+    };
+
+    const buildPerfumeTray = (parentGroup: THREE.Group, x: number, y: number, z: number) => {
+      const group = new THREE.Group();
+      group.position.set(x, y, z);
+
+      const trayMirror = new THREE.Mesh(new THREE.PlaneGeometry(0.38, 0.58), mirrorMat);
+      trayMirror.rotateX(-Math.PI / 2);
+      trayMirror.position.set(0, 0.02, 0);
+      group.add(trayMirror);
+
+      const brassGeos: THREE.BufferGeometry[] = [];
+      const trayRim = new THREE.BoxGeometry(0.40, 0.04, 0.60);
+      trayRim.translate(0, 0.02, 0);
+      brassGeos.push(trayRim);
+
+      const flacon1 = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.14, 8), amberGlassMat);
+      flacon1.position.set(0.05, 0.09, -0.16);
+      const stopper1 = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8), antiqueGoldMat);
+      stopper1.position.set(0.05, 0.18, -0.16);
+      group.add(flacon1, stopper1);
+
+      const flacon2 = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.18, 12), smokedCrystalMat);
+      flacon2.position.set(-0.06, 0.11, -0.04);
+      const stopper2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.04, 8), crystalSparkleMat);
+      stopper2.position.set(-0.06, 0.22, -0.04);
+      group.add(flacon2, stopper2);
+
+      const box = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.09, 0.18), cordovanLeatherMat);
+      box.position.set(0.02, 0.065, 0.14);
+      const clasp = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.02, 0.025), antiqueGoldMat);
+      clasp.position.set(-0.055, 0.065, 0.14);
+      group.add(box, clasp);
+
+      const trayMesh = safeMerge(brassGeos, antiqueGoldMat);
+      if (trayMesh) group.add(trayMesh);
+
+      parentGroup.add(group);
+    };
+
+    const buildTempleAltarDecor = (parentGroup: THREE.Group, consoleX: number) => {
+      const group = new THREE.Group();
+      group.position.set(consoleX, 0, 0);
+
+      const blossomCount = 28;
+      for (let s = 0; s < 2; s++) {
+        for (let i = 0; i <= blossomCount; i++) {
+          const u = i / blossomCount;
+          const arcZ = (u - 0.5) * 1.8;
+          const sagY = 0.88 - Math.sin(u * Math.PI) * 0.32;
+          const blossomMat = i % 2 === 0 ? marigoldOrangeMat : marigoldYellowMat;
+          const blossom = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 8), blossomMat);
+          blossom.position.set(0.42, sagY, arcZ);
+          group.add(blossom);
+        }
+      }
+
+      const idolGroup = new THREE.Group();
+      idolGroup.position.set(0, 0.92, -0.6);
+      const idolGeos: THREE.BufferGeometry[] = [];
+      const idolPed = new THREE.CylinderGeometry(0.16, 0.20, 0.08, 16);
+      idolPed.translate(0, 0.04, 0);
+      const lotusBase = new THREE.CylinderGeometry(0.18, 0.14, 0.05, 16);
+      lotusBase.translate(0, 0.10, 0);
+      const idolBody = new THREE.CylinderGeometry(0.10, 0.14, 0.32, 12);
+      idolBody.translate(0, 0.28, 0);
+      const haloAureole = new THREE.TorusGeometry(0.18, 0.02, 8, 24);
+      haloAureole.translate(0, 0.36, -0.04);
+      idolGeos.push(idolPed, lotusBase, idolBody, haloAureole);
+      const idolMesh = safeMerge(idolGeos, antiqueGoldMat);
+      if (idolMesh) idolGroup.add(idolMesh);
+      group.add(idolGroup);
+
+      const bellGroup = new THREE.Group();
+      bellGroup.position.set(0, 0.92, 0.5);
+      const ghantiGeos: THREE.BufferGeometry[] = [];
+      const bellDome = new THREE.CylinderGeometry(0.02, 0.06, 0.08, 12);
+      bellDome.translate(0, 0.04, 0);
+      const bellHandle = new THREE.CylinderGeometry(0.008, 0.008, 0.12, 8);
+      bellHandle.translate(0, 0.14, 0);
+      const finialIcon = new THREE.SphereGeometry(0.02, 8, 8);
+      finialIcon.translate(0, 0.21, 0);
+      ghantiGeos.push(bellDome, bellHandle, finialIcon);
+      const ghantiMesh = safeMerge(ghantiGeos, antiqueGoldMat);
+      if (ghantiMesh) bellGroup.add(ghantiMesh);
+      group.add(bellGroup);
+
+      parentGroup.add(group);
+    };
+
+    const buildHangingTempleBells = (parentGroup: THREE.Group, x: number, z: number, ceilingH: number, bellH: number) => {
+      const group = new THREE.Group();
+      group.position.set(x, 0, z);
+
+      const brassGeos: THREE.BufferGeometry[] = [];
+      const bracket = new THREE.CylinderGeometry(0.14, 0.14, 0.04, 16);
+      bracket.translate(0, ceilingH - 0.02, 0);
+      brassGeos.push(bracket);
+
+      const chainLen = Math.max(0.4, ceilingH - bellH);
+      const chain = new THREE.CylinderGeometry(0.012, 0.012, chainLen, 8);
+      chain.translate(0, ceilingH - chainLen / 2, 0);
+      brassGeos.push(chain);
+
+      const bellDome = new THREE.CylinderGeometry(0.08, 0.22, 0.35, 16);
+      bellDome.translate(0, bellH, 0);
+      const bellRim = new THREE.TorusGeometry(0.23, 0.025, 10, 20);
+      bellRim.rotateX(Math.PI / 2);
+      bellRim.translate(0, bellH - 0.17, 0);
+      const clapper = new THREE.SphereGeometry(0.045, 10, 10);
+      clapper.translate(0, bellH - 0.22, 0);
+      brassGeos.push(bellDome, bellRim, clapper);
+
+      const bellMesh = safeMerge(brassGeos, antiqueGoldMat);
+      if (bellMesh) group.add(bellMesh);
+
+      parentGroup.add(group);
+    };
+
+    const buildExecutiveDeskDecor = (parentGroup: THREE.Group, x: number, y: number, z: number) => {
+      const group = new THREE.Group();
+      group.position.set(x, y, z);
+
+      const blotter = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.018, 0.95), cognacBlotterMat);
+      blotter.position.set(0, 0.009, 0);
+      group.add(blotter);
+
+      const brassGeos: THREE.BufferGeometry[] = [];
+      const corners = [
+        [-0.26, -0.46], [0.26, -0.46], [-0.26, 0.46], [0.26, 0.46]
+      ];
+      corners.forEach(([cx, cz]) => {
+        const cGeo = new THREE.BoxGeometry(0.05, 0.022, 0.05);
+        cGeo.translate(cx, 0.011, cz);
+        brassGeos.push(cGeo);
+      });
+      const tray = new THREE.BoxGeometry(0.06, 0.015, 0.24);
+      tray.translate(-0.20, 0.02, 0);
+      const pen1 = new THREE.CylinderGeometry(0.005, 0.005, 0.16, 8);
+      pen1.rotateX(Math.PI / 2);
+      pen1.translate(-0.20, 0.03, -0.02);
+      const pen2 = new THREE.CylinderGeometry(0.005, 0.005, 0.16, 8);
+      pen2.rotateX(Math.PI / 2);
+      pen2.translate(-0.20, 0.03, 0.02);
+      brassGeos.push(tray, pen1, pen2);
+
+      const brassAccents = safeMerge(brassGeos, antiqueGoldMat);
+      if (brassAccents) group.add(brassAccents);
+
+      const armillaryGroup = new THREE.Group();
+      armillaryGroup.position.set(0, 0, -0.80);
+      const armGeos: THREE.BufferGeometry[] = [];
+      const armBase = new THREE.CylinderGeometry(0.12, 0.15, 0.08, 16);
+      armBase.translate(0, 0.04, 0);
+      const armShaft = new THREE.CylinderGeometry(0.025, 0.025, 0.14, 12);
+      armShaft.translate(0, 0.15, 0);
+      const r1 = new THREE.TorusGeometry(0.18, 0.014, 10, 24);
+      r1.translate(0, 0.35, 0);
+      const r2 = new THREE.TorusGeometry(0.18, 0.014, 10, 24);
+      r2.rotateX(Math.PI / 3);
+      r2.translate(0, 0.35, 0);
+      const r3 = new THREE.TorusGeometry(0.14, 0.012, 10, 24);
+      r3.rotateZ(Math.PI / 4);
+      r3.translate(0, 0.35, 0);
+      armGeos.push(armBase, armShaft, r1, r2, r3);
+      const armMesh = safeMerge(armGeos, antiqueGoldMat);
+      if (armMesh) armillaryGroup.add(armMesh);
+      group.add(armillaryGroup);
+
+      const bookendsGroup = new THREE.Group();
+      bookendsGroup.position.set(0, 0, 0.78);
+      const bEnd1 = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.22, 4), calacattaConsoleMat);
+      bEnd1.rotation.y = Math.PI / 4;
+      bEnd1.position.set(0, 0.11, -0.16);
+      const bEnd2 = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.22, 4), calacattaConsoleMat);
+      bEnd2.rotation.y = Math.PI / 4;
+      bEnd2.position.set(0, 0.11, 0.16);
+      const bk1 = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.20, 0.045), bookTerracottaMat);
+      bk1.position.set(0, 0.10, -0.06);
+      const bk2 = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.18, 0.045), bookCharcoalMat);
+      bk2.position.set(0, 0.09, 0);
+      const bk3 = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, 0.045), bookIvoryMat);
+      bk3.position.set(0, 0.11, 0.06);
+      bookendsGroup.add(bEnd1, bEnd2, bk1, bk2, bk3);
+      group.add(bookendsGroup);
+
+      parentGroup.add(group);
+    };
+
+    const buildAwardWallTriptych = (parentGroup: THREE.Group, x: number, y: number, z: number, rotY: number) => {
+      const group = new THREE.Group();
+      group.position.set(x, y, z);
+      group.rotation.y = rotY;
+
+      for (let i = 0; i < 3; i++) {
+        const ax = (i - 1) * 0.95;
+        const certGroup = new THREE.Group();
+        certGroup.position.set(ax, 0, 0);
+
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.92, 0.03), antiqueGoldMat);
+        const matting = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.86), bookPaperPagesMat);
+        matting.position.set(0, 0, 0.016);
+        const seal = new THREE.Mesh(new THREE.CircleGeometry(0.06, 16), antiqueGoldMat);
+        seal.position.set(0, -0.26, 0.018);
+
+        certGroup.add(frame, matting, seal);
+        group.add(certGroup);
+      }
+
+      parentGroup.add(group);
+    };
+
+    const buildRoyalSalonDecor = (parentGroup: THREE.Group, x: number, y: number, z: number) => {
+      const group = new THREE.Group();
+      group.position.set(x, y, z);
+
+      const urnGroup = new THREE.Group();
+      urnGroup.position.set(0, 0, -0.75);
+      const urnPorcelain = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.12, 0.52, 16), porcelainCobaltMat);
+      urnPorcelain.position.set(0, 0.30, 0);
+      const urnGoldGeos: THREE.BufferGeometry[] = [];
+      const uBase = new THREE.CylinderGeometry(0.14, 0.18, 0.08, 16);
+      uBase.translate(0, 0.04, 0);
+      const uNeck = new THREE.CylinderGeometry(0.10, 0.20, 0.16, 16);
+      uNeck.translate(0, 0.60, 0);
+      const uFinial = new THREE.ConeGeometry(0.06, 0.14, 12);
+      uFinial.translate(0, 0.74, 0);
+      const h1 = new THREE.TorusGeometry(0.14, 0.02, 8, 16);
+      h1.translate(-0.20, 0.38, 0);
+      const h2 = new THREE.TorusGeometry(0.14, 0.02, 8, 16);
+      h2.translate(0.20, 0.38, 0);
+      urnGoldGeos.push(uBase, uNeck, uFinial, h1, h2);
+      const urnGoldMesh = safeMerge(urnGoldGeos, antiqueGoldMat);
+      if (urnGoldMesh) urnGroup.add(urnGoldMesh);
+      urnGroup.add(urnPorcelain);
+      group.add(urnGroup);
+
+      const candGroup = new THREE.Group();
+      candGroup.position.set(0, 0, 0.75);
+      const candGeos: THREE.BufferGeometry[] = [];
+      const flameGeos: THREE.BufferGeometry[] = [];
+      const cBase = new THREE.CylinderGeometry(0.14, 0.18, 0.10, 16);
+      cBase.translate(0, 0.05, 0);
+      const cStem = new THREE.CylinderGeometry(0.025, 0.035, 0.52, 12);
+      cStem.translate(0, 0.32, 0);
+      candGeos.push(cBase, cStem);
+
+      const ccSleeve = new THREE.CylinderGeometry(0.016, 0.016, 0.18, 8);
+      ccSleeve.translate(0, 0.64, 0);
+      candGeos.push(ccSleeve);
+      const ccFlame = new THREE.ConeGeometry(0.016, 0.05, 8);
+      ccFlame.translate(0, 0.76, 0);
+      flameGeos.push(ccFlame);
+
+      for (let a = 0; a < 4; a++) {
+        const ang = (a * Math.PI) / 2 + Math.PI / 4;
+        const ax = Math.cos(ang) * 0.24;
+        const az = Math.sin(ang) * 0.24;
+
+        const arm = new THREE.CylinderGeometry(0.014, 0.014, 0.28, 8);
+        arm.rotateZ(Math.PI / 3.5);
+        arm.rotateY(-ang);
+        arm.translate(ax / 2, 0.42, az / 2);
+        candGeos.push(arm);
+
+        const bobeche = new THREE.CylinderGeometry(0.045, 0.025, 0.02, 10);
+        bobeche.translate(ax, 0.48, az);
+        const sleeve = new THREE.CylinderGeometry(0.015, 0.015, 0.15, 8);
+        sleeve.translate(ax, 0.56, az);
+        candGeos.push(bobeche, sleeve);
+
+        const flame = new THREE.ConeGeometry(0.015, 0.045, 8);
+        flame.translate(ax, 0.66, az);
+        flameGeos.push(flame);
+      }
+      const candMesh = safeMerge(candGeos, darkBronzeMat);
+      if (candMesh) candGroup.add(candMesh);
+      const flameMesh = safeMerge(flameGeos, chandelierGlowMat);
+      if (flameMesh) candGroup.add(flameMesh);
+      group.add(candGroup);
+
+      const shieldGroup = new THREE.Group();
+      shieldGroup.position.set(0, 0, 0);
+      const shield = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.14, 0.38, 6), antiqueGoldMat);
+      shield.rotation.y = Math.PI / 2;
+      shield.position.set(0, 0.32, 0);
+      const easel = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.45, 6), darkBronzeMat);
+      easel.rotation.z = -0.35;
+      easel.position.set(-0.08, 0.22, 0);
+      shieldGroup.add(shield, easel);
+      group.add(shieldGroup);
+
+      parentGroup.add(group);
+    };
+
+    const buildCorporateReceptionDecor = (parentGroup: THREE.Group, x: number, y: number, z: number) => {
+      const group = new THREE.Group();
+      group.position.set(x, y, z);
+
+      const stagGroup = new THREE.Group();
+      stagGroup.position.set(0, 0, -0.70);
+      const stagPlinth = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.14, 0.26), neroMarquinaPedestalMat);
+      stagPlinth.position.set(0, 0.07, 0);
+      stagGroup.add(stagPlinth);
+
+      const stagGeos: THREE.BufferGeometry[] = [];
+      const body = new THREE.CylinderGeometry(0.08, 0.09, 0.32, 8);
+      body.rotateZ(Math.PI / 2.3);
+      body.translate(0, 0.32, 0);
+      const neck = new THREE.CylinderGeometry(0.05, 0.065, 0.26, 8);
+      neck.rotateZ(-0.35);
+      neck.translate(-0.10, 0.48, 0);
+      const head = new THREE.ConeGeometry(0.045, 0.12, 6);
+      head.rotateZ(Math.PI / 2.2);
+      head.translate(-0.20, 0.60, 0);
+      const legs = [
+        [-0.08, 0.15, -0.06], [-0.08, 0.15, 0.06],
+        [0.08, 0.15, -0.06], [0.08, 0.15, 0.06]
+      ];
+      legs.forEach(([lx, ly, lz]) => {
+        const leg = new THREE.CylinderGeometry(0.012, 0.008, 0.28, 6);
+        leg.translate(lx, ly, lz);
+        stagGeos.push(leg);
+      });
+      for (let a = -1; a <= 1; a += 2) {
+        const mainAntler = new THREE.CylinderGeometry(0.008, 0.012, 0.32, 6);
+        mainAntler.rotateZ(-0.45);
+        mainAntler.rotateX(a * 0.35);
+        mainAntler.translate(-0.16, 0.72, a * 0.09);
+        const tine = new THREE.CylinderGeometry(0.006, 0.008, 0.14, 6);
+        tine.rotateZ(-0.85);
+        tine.translate(-0.19, 0.76, a * 0.12);
+        stagGeos.push(mainAntler, tine);
+      }
+      stagGeos.push(body, neck, head);
+      const stagMesh = safeMerge(stagGeos, receptionGoldMat);
+      if (stagMesh) stagGroup.add(stagMesh);
+      group.add(stagGroup);
+
+      const vaseGroup = new THREE.Group();
+      vaseGroup.position.set(0, 0, 0.70);
+      const glassVase = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.075, 0.48, 20), smokedCrystalMat);
+      glassVase.position.set(0, 0.24, 0);
+      vaseGroup.add(glassVase);
+      const branchGeos: THREE.BufferGeometry[] = [];
+      const br1 = new THREE.CylinderGeometry(0.006, 0.008, 0.75, 6);
+      br1.rotateZ(0.22);
+      br1.translate(0.06, 0.58, 0);
+      const br2 = new THREE.CylinderGeometry(0.004, 0.006, 0.45, 6);
+      br2.rotateZ(-0.35);
+      br2.translate(-0.05, 0.68, 0.04);
+      branchGeos.push(br1, br2);
+      const brMesh = safeMerge(branchGeos, darkBronzeMat);
+      if (brMesh) vaseGroup.add(brMesh);
+      group.add(vaseGroup);
+
+      buildArtBookStack(group, 0, 0, 0, 0.08);
+
+      parentGroup.add(group);
+    };
+
     // -------------------------------------------------------------------------
     // CHAMBER I: GRAND LIVING (Curated Architectural Gallery & Real 3D Furniture)
     // -------------------------------------------------------------------------
@@ -4042,6 +5175,32 @@ export default function ThreeMansionEngine() {
       );
       roomGroup.add(grandDustPoints);
 
+      // 7. STATEMENT CHANDELIER OVERHEAD & CURATED ARTIFACTS
+      // Grand Tiered Crystal & Brass Chandelier suspended at center
+      buildTieredCrystalChandelier(roomGroup, 0, 5.0, 0, xDoor - roomW / 2, 5.0, zCenter);
+
+      // Monolithic Nero Marquina Coffee Table Ensemble (Center-foreground)
+      const ch1TableGroup = new THREE.Group();
+      ch1TableGroup.position.set(-2.8, 0, 0);
+      const ch1TableTop = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.14, 2.5), grandFloorMat);
+      ch1TableTop.position.set(0, 0.35, 0);
+      const ch1TablePlinth = new THREE.Mesh(new THREE.BoxGeometry(0.70, 0.28, 2.1), darkBronzeMat);
+      ch1TablePlinth.position.set(0, 0.14, 0);
+      const ch1TableShadow = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.7), contactShadowMat);
+      ch1TableShadow.rotation.x = -Math.PI / 2;
+      ch1TableShadow.position.set(0, 0.005, 0);
+      ch1TableGroup.add(ch1TableTop, ch1TablePlinth, ch1TableShadow);
+      roomGroup.add(ch1TableGroup);
+
+      // Curated Hardcover Art Book Stack on Coffee Table (Flanking left)
+      buildArtBookStack(ch1TableGroup, 0, 0.42, -0.65, 0.12);
+
+      // Sculptural Matte Ceramic Vase with Botanical Branches on Coffee Table (Flanking right)
+      buildSculpturalCeramicVase(ch1TableGroup, 0, 0.42, 0.65, darkCeramicMat, true);
+
+      // Monumental Arched Gilded Statement Mirror on Side Wall 1
+      buildStatementMirror(roomGroup, 0, 3.4, -roomD / 2 + 0.08, 1.5, 2.4, 0, "arched");
+
       hallwayGroup.add(roomGroup);
       return roomGroup;
     };
@@ -4130,6 +5289,45 @@ export default function ThreeMansionEngine() {
         })
       );
       roomGroup.add(versaceDustPoints);
+
+      // 7. STATEMENT CHANDELIER OVERHEAD & CURATED ARTIFACTS
+      // Elegant Crystal Drop Cluster Chandelier
+      buildClusterDropChandelier(roomGroup, 0, 4.6, 0, xDoor + roomW / 2, 4.6, zCenter);
+
+      // Curated Smoked Oak & Marble Credenza / Console Table (Center-foreground)
+      const ch2CredenzaGroup = new THREE.Group();
+      ch2CredenzaGroup.position.set(2.8, 0, 0);
+      const ch2Top = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.08, 2.4), calacattaConsoleMat);
+      ch2Top.position.set(0, 0.80, 0);
+      const ch2Body = new THREE.Mesh(new THREE.BoxGeometry(0.60, 0.55, 2.3), smokedOakMat);
+      ch2Body.position.set(0, 0.48, 0);
+      const ch2Legs: THREE.BufferGeometry[] = [];
+      [
+        [-0.22, -1.05],
+        [0.22, -1.05],
+        [-0.22, 1.05],
+        [0.22, 1.05],
+      ].forEach(([lx, lz]) => {
+        const leg = new THREE.CylinderGeometry(0.02, 0.012, 0.22, 8);
+        leg.translate(lx, 0.11, lz);
+        ch2Legs.push(leg);
+      });
+      const ch2LegsMesh = safeMerge(ch2Legs, antiqueGoldMat);
+      if (ch2LegsMesh) ch2CredenzaGroup.add(ch2LegsMesh);
+      const ch2Shadow = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 2.6), contactShadowMat);
+      ch2Shadow.rotation.x = -Math.PI / 2;
+      ch2Shadow.position.set(0, 0.005, 0);
+      ch2CredenzaGroup.add(ch2Top, ch2Body, ch2Shadow);
+      roomGroup.add(ch2CredenzaGroup);
+
+      // Sculptural Brass & Marble Bird Sculpture on Credenza (Flanking left)
+      buildBirdSculpture(ch2CredenzaGroup, 0, 0.84, -0.75);
+
+      // Luxury Perfume Flacons & Jewelry Tray on Credenza (Flanking right)
+      buildPerfumeTray(ch2CredenzaGroup, 0, 0.84, 0.65);
+
+      // Ornate Versace-Style Mirror on Side Wall 1
+      buildStatementMirror(roomGroup, 0, 3.4, -roomD / 2 + 0.08, 1.4, 2.3, 0, "versace");
 
       hallwayGroup.add(roomGroup);
       return roomGroup;
@@ -4310,6 +5508,17 @@ export default function ThreeMansionEngine() {
       );
       roomGroup.add(sanctumDust);
 
+      // 8. STATEMENT OVERHEAD FIXTURE & CURATED SANCTUM ARTIFACTS
+      // Ornate Brass Temple Hanging Lamp (Hanging Akhand Diya / Kalash fixture)
+      buildTempleHangingLamp(roomGroup, 0, 4.8, 0, xDoor - roomW / 2, 4.8, zCenter);
+
+      // Fresh Flower Marigold Garlands (Genda Phool), Brass Deity Idol & Pooja Bell on Altar Console
+      buildTempleAltarDecor(roomGroup, -5.5);
+
+      // Monumental Cast Brass Temple Bells on Chains flanking Altar
+      buildHangingTempleBells(roomGroup, -3.8, -2.2, roomH, 2.8);
+      buildHangingTempleBells(roomGroup, -3.8, 2.2, roomH, 2.8);
+
       hallwayGroup.add(roomGroup);
       return roomGroup;
     };
@@ -4382,6 +5591,31 @@ export default function ThreeMansionEngine() {
       corpSpot.position.set(xDoor + 2.0, roomH - 0.4, zCenter);
       corpSpot.target = ch4HeroArt.group;
       chamberLightsGroup.add(corpSpot);
+
+      // 6. STATEMENT CHANDELIER OVERHEAD & CURATED ARTIFACTS
+      // Sleek Linear Crystal / Brass-and-Glass Chandelier overhead
+      buildLinearExecutiveChandelier(roomGroup, 0, 5.2, 0, xDoor + roomW / 2, 5.2, zCenter);
+
+      // Executive Credenza Desk (Center-foreground)
+      const execDeskGroup = new THREE.Group();
+      execDeskGroup.position.set(2.8, 0, 0);
+      const edTop = new THREE.Mesh(new THREE.BoxGeometry(0.70, 0.08, 2.5), wengeTimberMat);
+      edTop.position.set(0, 0.80, 0);
+      const edTrim = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.025, 2.52), antiqueGoldMat);
+      edTrim.position.set(0, 0.75, 0);
+      const edBody = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.52, 2.4), wengeTimberMat);
+      edBody.position.set(0, 0.48, 0);
+      const edShadow = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 2.7), contactShadowMat);
+      edShadow.rotation.x = -Math.PI / 2;
+      edShadow.position.set(0, 0.005, 0);
+      execDeskGroup.add(edTop, edTrim, edBody, edShadow);
+      roomGroup.add(execDeskGroup);
+
+      // Curated Leather Blotter, Brass Armillary Globe, and Marble Bookends
+      buildExecutiveDeskDecor(execDeskGroup, 0, 0.84, 0);
+
+      // Framed International Award / Certificate Credential Wall Triptych on Side Wall 1
+      buildAwardWallTriptych(roomGroup, 0, 3.4, -roomD / 2 + 0.08, 0);
 
       hallwayGroup.add(roomGroup);
       return roomGroup;
@@ -4460,6 +5694,42 @@ export default function ThreeMansionEngine() {
       royalSpot.target = ch5HeroArt.group;
       chamberLightsGroup.add(royalSpot);
 
+      // 6. STATEMENT CHANDELIER OVERHEAD & CURATED ARTIFACTS
+      // Monumental 3.2m 4-Tier Royal Cascade Chandelier (The grandest of all six rooms)
+      buildRoyalCascadeChandelier(roomGroup, 0, 4.8, 0, xDoor - roomW / 2, 4.8, zCenter);
+
+      // Grand Royal Gilded Console Table (Center-foreground)
+      const royalConsoleGroup = new THREE.Group();
+      royalConsoleGroup.position.set(-2.8, 0, 0);
+      const rcTop = new THREE.Mesh(new THREE.BoxGeometry(0.70, 0.10, 2.5), grandFloorMat);
+      rcTop.position.set(0, 0.82, 0);
+      const rcGoldTrim = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.035, 2.52), antiqueGoldMat);
+      rcGoldTrim.position.set(0, 0.76, 0);
+      const rcLegs: THREE.BufferGeometry[] = [];
+      [
+        [-0.25, -1.05],
+        [0.25, -1.05],
+        [-0.25, 1.05],
+        [0.25, 1.05],
+      ].forEach(([lx, lz]) => {
+        const leg = new THREE.CylinderGeometry(0.04, 0.02, 0.74, 8);
+        leg.translate(lx, 0.37, lz);
+        rcLegs.push(leg);
+      });
+      const rcLegsMesh = safeMerge(rcLegs, antiqueGoldMat);
+      if (rcLegsMesh) royalConsoleGroup.add(rcLegsMesh);
+      const rcShadow = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 2.7), contactShadowMat);
+      rcShadow.rotation.x = -Math.PI / 2;
+      rcShadow.position.set(0, 0.005, 0);
+      royalConsoleGroup.add(rcTop, rcGoldTrim, rcShadow);
+      roomGroup.add(royalConsoleGroup);
+
+      // Curated Imperial Cobalt & Gold Porcelain Urn, 5-Arm Candelabra, and Ceremonial Shield
+      buildRoyalSalonDecor(royalConsoleGroup, 0, 0.86, 0);
+
+      // Monumental Gilded Rococo Mirror on Side Wall 1
+      buildStatementMirror(roomGroup, 0, 3.4, -roomD / 2 + 0.08, 1.6, 2.6, 0, "baroque");
+
       hallwayGroup.add(roomGroup);
       return roomGroup;
     };
@@ -4531,6 +5801,26 @@ export default function ThreeMansionEngine() {
       lobbySpot.position.set(xDoor + 2.0, roomH - 0.4, zCenter);
       lobbySpot.target = ch6HeroArt.group;
       chamberLightsGroup.add(lobbySpot);
+
+      // 6. STATEMENT CHANDELIER OVERHEAD & CURATED ARTIFACTS
+      // Modern Sculptural Orbital Pendant Chandelier overhead
+      buildModernOrbitalPendant(roomGroup, 0, 5.2, 0, xDoor + roomW / 2, 5.2, zCenter);
+
+      // Minimalist Monolithic Reception Table (Center-foreground)
+      const corpTableGroup = new THREE.Group();
+      corpTableGroup.position.set(2.8, 0, 0);
+      const ctTop = new THREE.Mesh(new THREE.BoxGeometry(0.90, 0.08, 2.4), wengeTimberMat);
+      ctTop.position.set(0, 0.35, 0);
+      const ctBase = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.28, 2.0), darkBronzeMat);
+      ctBase.position.set(0, 0.14, 0);
+      const ctShadow = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 2.6), contactShadowMat);
+      ctShadow.rotation.x = -Math.PI / 2;
+      ctShadow.position.set(0, 0.005, 0);
+      corpTableGroup.add(ctTop, ctBase, ctShadow);
+      roomGroup.add(corpTableGroup);
+
+      // Curated Polished Gold Stag Sculpture, Fluted Smoked-Glass Vase with Botanical Branch, and Monograph Books
+      buildCorporateReceptionDecor(corpTableGroup, 0, 0.39, 0);
 
       hallwayGroup.add(roomGroup);
       return roomGroup;
