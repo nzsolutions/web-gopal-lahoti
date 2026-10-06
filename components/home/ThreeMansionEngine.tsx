@@ -1904,10 +1904,7 @@ export default function ThreeMansionEngine() {
       // Gold reveal molding along lower beam edge
       appendTransformedGeo(archGoldGeos, archRevealGeo, 0, hallHeight - 0.6, az);
 
-      // Supporting wall pilasters on left & right
-      const pilasterTarget = i === 1 ? archOakGeos : archStoneGeos;
-      appendTransformedGeo(pilasterTarget, archPilasterGeo, -hallWidth / 2 + 0.25, hallHeight / 2, az);
-      appendTransformedGeo(pilasterTarget, archPilasterGeo, hallWidth / 2 - 0.25, hallHeight / 2, az);
+      // Wall pilasters are bracketed symmetrically at the door edges in the portal frame system below (zero entrance-bisecting columns)
 
       // Center Keystone with Roman Numeral Plaque in Antique Gold
       appendTransformedGeo(archGoldGeos, archKeystoneGeo, 0, hallHeight - 0.32, az);
@@ -3180,17 +3177,22 @@ export default function ThreeMansionEngine() {
     createLuxurySconce(hallWidth / 2, 3.8, -0.2, -1);
     createLuxurySconce(-hallWidth / 2, 3.8, -8.2, 1);
     createLuxurySconce(hallWidth / 2, 3.8, -8.2, -1);
+    // Chamber 1 flanking sconces (Z = -20, left)
     createLuxurySconce(-hallWidth / 2, 3.8, -16.5, 1);
     createLuxurySconce(-hallWidth / 2, 3.8, -23.5, 1);
+    // Chamber 2 flanking sconces (Z = -45, right)
     createLuxurySconce(hallWidth / 2, 3.8, -41.5, -1);
     createLuxurySconce(hallWidth / 2, 3.8, -48.5, -1);
+    // Chamber 3 flanking sconces (Z = -70, left)
     createLuxurySconce(-hallWidth / 2, 3.8, -66.5, 1);
-    createLuxurySconce(-hallWidth / 2, 3.8, -91.5, 1);
-    createLuxurySconce(-hallWidth / 2, 3.8, -98.5, 1);
+    createLuxurySconce(-hallWidth / 2, 3.8, -73.5, 1);
+    // Chamber 4 flanking sconces (Z = -95, right)
     createLuxurySconce(hallWidth / 2, 3.8, -91.5, -1);
     createLuxurySconce(hallWidth / 2, 3.8, -98.5, -1);
+    // Chamber 5 flanking sconces (Z = -120, left)
     createLuxurySconce(-hallWidth / 2, 3.8, -116.5, 1);
     createLuxurySconce(-hallWidth / 2, 3.8, -123.5, 1);
+    // Chamber 6 flanking sconces (Z = -145, right)
     createLuxurySconce(hallWidth / 2, 3.8, -141.5, -1);
     createLuxurySconce(hallWidth / 2, 3.8, -148.5, -1);
     createLuxurySconce(-hallWidth / 2, 3.8, -162.0, 1);
@@ -3547,26 +3549,28 @@ export default function ThreeMansionEngine() {
         }
       };
 
+      const doorHalfW = 3.2; // 6.4m wide grand entrance opening
+
       // Segment 1: from hallZStart to first door
-      addWallSegment(hallZStart, zDoors[0] + 3);
+      addWallSegment(hallZStart, zDoors[0] + doorHalfW);
 
       // Segments between doors
       for (let i = 0; i < zDoors.length - 1; i++) {
-        addWallSegment(zDoors[i] - 3, zDoors[i + 1] + 3);
+        addWallSegment(zDoors[i] - doorHalfW, zDoors[i + 1] + doorHalfW);
       }
 
       // Segment from last door to hallZEnd
-      addWallSegment(zDoors[zDoors.length - 1] - 3, hallZEnd);
+      addWallSegment(zDoors[zDoors.length - 1] - doorHalfW, hallZEnd);
 
-      // Header walls above doorways
+      // Header walls above doorways (elevated to 5.4m for grand proportions)
       zDoors.forEach((dz) => {
-        const headerH = hallHeight - 5.2;
+        const headerH = hallHeight - 5.4;
         const header = new THREE.Mesh(
-          new THREE.PlaneGeometry(6, headerH),
+          new THREE.PlaneGeometry(doorHalfW * 2, headerH),
           corridorWallMat
         );
         header.rotation.y = sideFacing * (Math.PI / 2);
-        header.position.set(xPos, 5.2 + headerH / 2, dz);
+        header.position.set(xPos, 5.4 + headerH / 2, dz);
         wallGroup.add(header);
       });
 
@@ -3599,46 +3603,107 @@ export default function ThreeMansionEngine() {
       archGroup.position.set(p.xDoor, 0, p.z);
 
       const frameDepth = 0.85;
-      const frameWidth = 0.45;
-      const doorOpenWidth = 6.0;
-      const doorOpenHeight = 5.2;
+      const frameWidth = 0.50; // Majestic column width
+      const doorOpenWidth = 6.4; // 6.4m wide uninterrupted entrance view
+      const doorOpenHeight = 5.4; // Elevated grand opening
+      const colZ = doorOpenWidth / 2 + frameWidth / 2; // Exactly 3.45m flanking edge
 
-      // Left Jamb in Soft Taupe Stone
-      const leftJamb = new THREE.Mesh(
-        new THREE.BoxGeometry(frameDepth, doorOpenHeight, frameWidth),
-        stoneTrimMat
+      // Material tailored per chamber theme
+      const colMat = p.roman === "II" ? flutedOakMat : stoneTrimMat;
+
+      // 1. FLANKING PAIR OF CLASSICAL ARCHITECTURAL COLUMNS (LEFT & RIGHT EDGES ONLY)
+      [-colZ, colZ].forEach((cz) => {
+        // A. Molded Column Plinth Base
+        const plinth = new THREE.Mesh(
+          new THREE.BoxGeometry(frameDepth + 0.08, 0.42, frameWidth + 0.08),
+          colMat
+        );
+        plinth.position.set(0, 0.21, cz);
+
+        const plinthGoldCollar = new THREE.Mesh(
+          new THREE.BoxGeometry(frameDepth + 0.10, 0.05, frameWidth + 0.10),
+          antiqueGoldMat
+        );
+        plinthGoldCollar.position.set(0, 0.445, cz);
+
+        // B. Classical Fluted / Honed Column Shaft
+        const shaftH = doorOpenHeight - 0.85;
+        const shaft = new THREE.Mesh(
+          new THREE.BoxGeometry(frameDepth, shaftH, frameWidth),
+          colMat
+        );
+        shaft.position.set(0, 0.47 + shaftH / 2, cz);
+
+        // Architectural gold bead edge reveals on column shaft face
+        const goldBead1 = new THREE.Mesh(
+          new THREE.BoxGeometry(0.015, shaftH, 0.02),
+          antiqueGoldMat
+        );
+        goldBead1.position.set(-p.dir * (frameDepth / 2 + 0.008), 0.47 + shaftH / 2, cz - frameWidth / 2 + 0.04);
+
+        const goldBead2 = new THREE.Mesh(
+          new THREE.BoxGeometry(0.015, shaftH, 0.02),
+          antiqueGoldMat
+        );
+        goldBead2.position.set(-p.dir * (frameDepth / 2 + 0.008), 0.47 + shaftH / 2, cz + frameWidth / 2 - 0.04);
+
+        // C. Molded Tuscan / Corinthian Capital in Antique Gold
+        const capital = new THREE.Mesh(
+          new THREE.BoxGeometry(frameDepth + 0.10, 0.38, frameWidth + 0.10),
+          antiqueGoldMat
+        );
+        capital.position.set(0, doorOpenHeight - 0.19, cz);
+
+        archGroup.add(plinth, plinthGoldCollar, shaft, goldBead1, goldBead2, capital);
+      });
+
+      // 2. MONUMENTAL ARCHWAY ENTABLATURE & LINTEL (CONNECTING FLANKING COLUMNS OVERHEAD)
+      const entablatureLen = doorOpenWidth + frameWidth * 2 + 0.20; // 7.6m continuous span
+      const frieze = new THREE.Mesh(
+        new THREE.BoxGeometry(frameDepth + 0.04, 0.55, entablatureLen),
+        colMat
       );
-      leftJamb.position.set(0, doorOpenHeight / 2, -doorOpenWidth / 2);
+      frieze.position.set(0, doorOpenHeight + 0.275, 0);
 
-      // Right Jamb
-      const rightJamb = new THREE.Mesh(
-        new THREE.BoxGeometry(frameDepth, doorOpenHeight, frameWidth),
-        stoneTrimMat
-      );
-      rightJamb.position.set(0, doorOpenHeight / 2, doorOpenWidth / 2);
-
-      // Overhead Lintel Arch in Antique Gold
-      const lintel = new THREE.Mesh(
-        new THREE.BoxGeometry(frameDepth + 0.1, 0.55, doorOpenWidth + frameWidth * 2),
+      const cornice = new THREE.Mesh(
+        new THREE.BoxGeometry(frameDepth + 0.12, 0.22, entablatureLen + 0.10),
         antiqueGoldMat
       );
-      lintel.position.set(0, doorOpenHeight + 0.275, 0);
+      cornice.position.set(0, doorOpenHeight + 0.55 + 0.11, 0);
 
-      // Flush architectural brass transition inlay on floor connecting hallway to room
+      const architraveGoldFillet = new THREE.Mesh(
+        new THREE.BoxGeometry(frameDepth + 0.06, 0.05, doorOpenWidth),
+        antiqueGoldMat
+      );
+      architraveGoldFillet.position.set(0, doorOpenHeight - 0.025, 0);
+
+      // 3. CENTRAL ROMAN NUMERAL PLAQUE IN BURNISHED ANTIQUE GOLD
+      const plaque = new THREE.Mesh(
+        new THREE.BoxGeometry(0.14, 0.65, 1.35),
+        antiqueGoldMat
+      );
+      plaque.position.set(-p.dir * 0.44, doorOpenHeight + 0.75, 0);
+
+      // 4. ARCHITECTURAL WARM SOFFIT DOWNLIGHT (WELCOMING CHAMBER ENTRY WASH)
+      const soffitDownlight = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.18, 0.18, 0.03, 16),
+        new THREE.MeshStandardMaterial({
+          color: 0xffedd2,
+          emissive: 0xffcb72,
+          emissiveIntensity: 1.6,
+          roughness: 0.3,
+        })
+      );
+      soffitDownlight.position.set(0, doorOpenHeight - 0.015, 0);
+
+      // 5. FLUSH ARCHITECTURAL BRASS THRESHOLD INLAY ON FLOOR
       const thresh = new THREE.Mesh(
-        new THREE.BoxGeometry(0.06, 0.003, doorOpenWidth),
+        new THREE.BoxGeometry(0.08, 0.003, doorOpenWidth),
         antiqueGoldMat
       );
       thresh.position.set(0, 0.0015, 0);
 
-      // Roman Numeral Plaque
-      const plaque = new THREE.Mesh(
-        new THREE.BoxGeometry(0.12, 0.6, 1.25),
-        antiqueGoldMat
-      );
-      plaque.position.set(-p.dir * 0.38, doorOpenHeight + 0.75, 0);
-
-      archGroup.add(leftJamb, rightJamb, lintel, thresh, plaque);
+      archGroup.add(frieze, cornice, architraveGoldFillet, plaque, soffitDownlight, thresh);
       hallwayGroup.add(archGroup);
     });
 
@@ -3721,8 +3786,8 @@ export default function ThreeMansionEngine() {
 
       // 4. ENTRANCE WALL WITH DOORWAY CUTOUT (meeting hallway archway flush)
       const entryWallX = -sideDir * (roomW / 2);
-      const doorW = 6.0;
-      const doorH = 5.2;
+      const doorW = 6.4;
+      const doorH = 5.4;
       const flankW = (roomD - doorW) / 2;
 
       const entryFlank1 = new THREE.Mesh(
