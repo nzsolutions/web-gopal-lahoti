@@ -38,9 +38,8 @@ export default function RootLayout({
         <link rel="preload" as="image" href="/assets/hallway_murals/mural_01.jpg" crossOrigin="anonymous" />
         <link rel="preload" as="image" href="/assets/hallway_murals/mural_02.jpg" crossOrigin="anonymous" />
         <link rel="preload" as="image" href="/assets/hallway_murals/mural_03.jpg" crossOrigin="anonymous" />
-        <link rel="preload" as="image" href="/assets/hallway_murals/mural_14.jpg" crossOrigin="anonymous" />
-        <link rel="preload" as="image" href="/assets/hallway_murals/mural_15.jpg" crossOrigin="anonymous" />
-        <link rel="preload" as="image" href="/assets/hallway_murals/mural_16.jpg" crossOrigin="anonymous" />
+        <link rel="preload" as="image" href="/assets/hallway_murals/mural_04.jpg" crossOrigin="anonymous" />
+        <link rel="preload" as="image" href="/assets/exhibition/ch1_living.jpg" crossOrigin="anonymous" />
       </head>
       <body className="bg-[#080809] text-[#f4f1ea] antialiased selection:bg-[#c5a880] selection:text-[#080809]">
         <CustomCursor />

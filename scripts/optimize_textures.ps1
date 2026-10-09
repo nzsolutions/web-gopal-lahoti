@@ -60,20 +60,20 @@ function Optimize-Image {
     }
 }
 
-# 1. Exhibition images (30 hero works): downscale from 3840px to 1920px
+# 1. Exhibition images (30 hero works): optimize to 1280px at Q78 for instant mobile delivery
 $exhibitionDir = "C:\Users\SARVESH\Desktop\Gopal Lahoti\public\assets\exhibition"
 if (Test-Path $exhibitionDir) {
     Get-ChildItem -Path $exhibitionDir -Filter "*.jpg" | ForEach-Object {
-        Optimize-Image -Path $_.FullName -MaxWidth 1920 -Quality 88
+        Optimize-Image -Path $_.FullName -MaxWidth 1280 -Quality 78
     }
 }
 
-# 2. Hallway murals (24 side murals): downscale from 2560px to 1440px
+# 2. Hallway murals (24 side murals): optimize to 1080px at Q76 for instant mobile delivery
 $muralDir = "C:\Users\SARVESH\Desktop\Gopal Lahoti\public\assets\hallway_murals"
 if (Test-Path $muralDir) {
     Get-ChildItem -Path $muralDir -Filter "*.jpg" | ForEach-Object {
-        Optimize-Image -Path $_.FullName -MaxWidth 1440 -Quality 85
+        Optimize-Image -Path $_.FullName -MaxWidth 1080 -Quality 76
     }
 }
 
-Write-Host "All textures successfully optimized!"
+Write-Host "All textures successfully optimized for ultra-fast mobile delivery!"

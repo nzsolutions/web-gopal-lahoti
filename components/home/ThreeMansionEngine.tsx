@@ -126,12 +126,14 @@ export default function ThreeMansionEngine() {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const progressLineRef = useRef<HTMLDivElement | null>(null);
   const progressTextRef = useRef<HTMLSpanElement | null>(null);
+  const progressMobileTextRef = useRef<HTMLSpanElement | null>(null);
   const hudRef = useRef<HTMLDivElement | null>(null);
   const currentChamberIdRef = useRef<string | null>(null);
 
   const [activeChamber, setActiveChamber] = useState<ChamberInfo | null>(null);
   const [showSpecs, setShowSpecs] = useState(false);
   const [showExhibition, setShowExhibition] = useState(false);
+  const [showMobileGallery, setShowMobileGallery] = useState(false);
   const [inspectedArtwork, setInspectedArtwork] = useState<ExhibitionArtwork | null>(null);
   const [activeArtworks, setActiveArtworks] = useState<Record<string, string>>({
     grand: "ch1_living",
@@ -606,7 +608,19 @@ export default function ThreeMansionEngine() {
     // Soft, luminous sunlit atmospheric mist (starts at 85m, preserving crystal clarity down the 120m corridor)
     scene.fog = new THREE.Fog("#e4d8c8", 85, 185);
 
-    const camera = new THREE.PerspectiveCamera(54, width / height, 0.1, 200);
+    // Dynamic responsive FOV: keeps horizontal view wide (~72°) on mobile/tablet portrait
+    const computeResponsiveFov = (aspect: number) => {
+      if (aspect >= 1.0) {
+        return 54;
+      }
+      const targetHFov = (72 * Math.PI) / 180;
+      const vFovRad = 2 * Math.atan(Math.tan(targetHFov / 2) / aspect);
+      const vFovDeg = (vFovRad * 180) / Math.PI;
+      return Math.min(82, Math.max(54, vFovDeg));
+    };
+
+    const initialAspect = width / height;
+    const camera = new THREE.PerspectiveCamera(computeResponsiveFov(initialAspect), initialAspect, 0.1, 200);
     camera.position.set(0, 2.85, 14.5);
     camera.lookAt(0, 3.10, 8.2);
 
@@ -716,10 +730,12 @@ export default function ThreeMansionEngine() {
     cofferDiffTex.colorSpace = THREE.SRGBColorSpace;
     const cofferNormTex = textureLoader.load("/assets/textures/champagne_gold_coffer_normal.jpg");
 
-    // Curated 4K Grand Hallway Exhibition Murals (from master lahoti content portfolio)
+    const lazyTextureLoader = new THREE.TextureLoader();
+
     const maxAniso = Math.min(renderer.capabilities.getMaxAnisotropy(), 4);
-    const loadMural = (src: string) => {
-      const t = textureLoader.load(src, (loaded) => {
+    const loadMural = (src: string, isPriority = false) => {
+      const loader = isPriority ? textureLoader : lazyTextureLoader;
+      const t = loader.load(src, (loaded) => {
         loaded.colorSpace = THREE.SRGBColorSpace;
         loaded.minFilter = THREE.LinearMipmapLinearFilter;
         loaded.magFilter = THREE.LinearFilter;
@@ -738,30 +754,31 @@ export default function ThreeMansionEngine() {
       return t;
     };
 
-    const muralTex1 = loadMural("/assets/hallway_murals/mural_01.jpg");
-    const muralTex2 = loadMural("/assets/hallway_murals/mural_02.jpg");
-    const muralTex3 = loadMural("/assets/hallway_murals/mural_03.jpg");
-    const muralTex4 = loadMural("/assets/hallway_murals/mural_04.jpg");
-    const muralTex5 = loadMural("/assets/hallway_murals/mural_05.jpg");
-    const muralTex6 = loadMural("/assets/hallway_murals/mural_06.jpg");
-    const muralTex7 = loadMural("/assets/hallway_murals/mural_07.jpg");
-    const muralTex8 = loadMural("/assets/hallway_murals/mural_08.jpg");
-    const muralTex9 = loadMural("/assets/hallway_murals/mural_09.jpg");
-    const muralTex10 = loadMural("/assets/hallway_murals/mural_10.jpg");
-    const muralTex11 = loadMural("/assets/hallway_murals/mural_11.jpg");
-    const muralTex12 = loadMural("/assets/hallway_murals/mural_12.jpg");
-    const muralTex13 = loadMural("/assets/hallway_murals/mural_13.jpg");
-    const muralTex14 = loadMural("/assets/hallway_murals/mural_14.jpg");
-    const muralTex15 = loadMural("/assets/hallway_murals/mural_15.jpg");
-    const muralTex16 = loadMural("/assets/hallway_murals/mural_16.jpg");
-    const muralTex17 = loadMural("/assets/hallway_murals/mural_17.jpg");
-    const muralTex18 = loadMural("/assets/hallway_murals/mural_18.jpg");
-    const muralTex19 = loadMural("/assets/hallway_murals/mural_19.jpg");
-    const muralTex20 = loadMural("/assets/hallway_murals/mural_20.jpg");
-    const muralTex21 = loadMural("/assets/hallway_murals/mural_21.jpg");
-    const muralTex22 = loadMural("/assets/hallway_murals/mural_22.jpg");
-    const muralTex23 = loadMural("/assets/hallway_murals/mural_23.jpg");
-    const muralTex24 = loadMural("/assets/hallway_murals/mural_24.jpg");
+    // First 4 entrance murals load with priority to unblock entrance instantly; rest load via background queue
+    const muralTex1 = loadMural("/assets/hallway_murals/mural_01.jpg", true);
+    const muralTex2 = loadMural("/assets/hallway_murals/mural_02.jpg", true);
+    const muralTex3 = loadMural("/assets/hallway_murals/mural_03.jpg", true);
+    const muralTex4 = loadMural("/assets/hallway_murals/mural_04.jpg", true);
+    const muralTex5 = loadMural("/assets/hallway_murals/mural_05.jpg", false);
+    const muralTex6 = loadMural("/assets/hallway_murals/mural_06.jpg", false);
+    const muralTex7 = loadMural("/assets/hallway_murals/mural_07.jpg", false);
+    const muralTex8 = loadMural("/assets/hallway_murals/mural_08.jpg", false);
+    const muralTex9 = loadMural("/assets/hallway_murals/mural_09.jpg", false);
+    const muralTex10 = loadMural("/assets/hallway_murals/mural_10.jpg", false);
+    const muralTex11 = loadMural("/assets/hallway_murals/mural_11.jpg", false);
+    const muralTex12 = loadMural("/assets/hallway_murals/mural_12.jpg", false);
+    const muralTex13 = loadMural("/assets/hallway_murals/mural_13.jpg", false);
+    const muralTex14 = loadMural("/assets/hallway_murals/mural_14.jpg", false);
+    const muralTex15 = loadMural("/assets/hallway_murals/mural_15.jpg", false);
+    const muralTex16 = loadMural("/assets/hallway_murals/mural_16.jpg", false);
+    const muralTex17 = loadMural("/assets/hallway_murals/mural_17.jpg", false);
+    const muralTex18 = loadMural("/assets/hallway_murals/mural_18.jpg", false);
+    const muralTex19 = loadMural("/assets/hallway_murals/mural_19.jpg", false);
+    const muralTex20 = loadMural("/assets/hallway_murals/mural_20.jpg", false);
+    const muralTex21 = loadMural("/assets/hallway_murals/mural_21.jpg", false);
+    const muralTex22 = loadMural("/assets/hallway_murals/mural_22.jpg", false);
+    const muralTex23 = loadMural("/assets/hallway_murals/mural_23.jpg", false);
+    const muralTex24 = loadMural("/assets/hallway_murals/mural_24.jpg", false);
 
     const allMuralTextures = [
       muralTex1, muralTex2, muralTex3, muralTex4,
@@ -772,11 +789,10 @@ export default function ThreeMansionEngine() {
       muralTex21, muralTex22, muralTex23, muralTex24,
     ];
 
-    // --- HIGH-PERFORMANCE 4K CHAMBER ARTWORK ARCHITECTURE ---
-    // Uses LinearFilter & generateMipmaps = false to eliminate synchronous gl.generateMipmap stalls,
-    // save 33% GPU VRAM, and provide pristine native 4K texel sampling with zero lag.
-    const loadChamberArt = (src: string) => {
-      const t = textureLoader.load(src, (loaded) => {
+    // --- HIGH-PERFORMANCE PROGRESSIVE CHAMBER ARTWORK ARCHITECTURE ---
+    const loadChamberArt = (src: string, isPriority = false) => {
+      const loader = isPriority ? textureLoader : lazyTextureLoader;
+      const t = loader.load(src, (loaded) => {
         loaded.colorSpace = THREE.SRGBColorSpace;
         loaded.generateMipmaps = false;
         loaded.minFilter = THREE.LinearFilter;
@@ -793,47 +809,47 @@ export default function ThreeMansionEngine() {
       return t;
     };
 
-    // Chamber 1: Grand Living
-    const texCh1Living = loadChamberArt("/assets/exhibition/ch1_living.jpg");
-    const texCh1Dining = loadChamberArt("/assets/exhibition/ch1_dining.jpg");
-    const texCh1Parlour = loadChamberArt("/assets/exhibition/ch1_parlour.jpg");
-    const texCh1Lounge = loadChamberArt("/assets/exhibition/ch1_lounge.jpg");
-    const texCh1Media = loadChamberArt("/assets/exhibition/ch1_media.jpg");
+    // Chamber 1: Grand Living (Hero work is priority, variations load in background)
+    const texCh1Living = loadChamberArt("/assets/exhibition/ch1_living.jpg", true);
+    const texCh1Dining = loadChamberArt("/assets/exhibition/ch1_dining.jpg", false);
+    const texCh1Parlour = loadChamberArt("/assets/exhibition/ch1_parlour.jpg", false);
+    const texCh1Lounge = loadChamberArt("/assets/exhibition/ch1_lounge.jpg", false);
+    const texCh1Media = loadChamberArt("/assets/exhibition/ch1_media.jpg", false);
 
     // Chamber 2: Versace Suite
-    const texCh2WoodBed = loadChamberArt("/assets/exhibition/ch2_woodbed.jpg");
-    const texCh2Bed1 = loadChamberArt("/assets/exhibition/ch2_bed1.jpg");
-    const texCh2Vanity = loadChamberArt("/assets/exhibition/ch2_vanity.jpg");
-    const texCh2Emerald = loadChamberArt("/assets/exhibition/ch2_emerald.jpg");
-    const texCh2Linear = loadChamberArt("/assets/exhibition/ch2_linear.jpg");
+    const texCh2WoodBed = loadChamberArt("/assets/exhibition/ch2_woodbed.jpg", false);
+    const texCh2Bed1 = loadChamberArt("/assets/exhibition/ch2_bed1.jpg", false);
+    const texCh2Vanity = loadChamberArt("/assets/exhibition/ch2_vanity.jpg", false);
+    const texCh2Emerald = loadChamberArt("/assets/exhibition/ch2_emerald.jpg", false);
+    const texCh2Linear = loadChamberArt("/assets/exhibition/ch2_linear.jpg", false);
 
     // Chamber 3: Sacred Sanctum
-    const texCh3Classic = loadChamberArt("/assets/exhibition/ch3_mandir_classic.jpg");
-    const texCh3Stone = loadChamberArt("/assets/exhibition/ch3_stone_altar.jpg");
-    const texCh3Courtyard = loadChamberArt("/assets/exhibition/ch3_courtyard.jpg");
-    const texCh3Foyer = loadChamberArt("/assets/exhibition/ch3_foyer.jpg");
-    const texCh3Portal = loadChamberArt("/assets/exhibition/ch3_portal.jpg");
+    const texCh3Classic = loadChamberArt("/assets/exhibition/ch3_mandir_classic.jpg", false);
+    const texCh3Stone = loadChamberArt("/assets/exhibition/ch3_stone_altar.jpg", false);
+    const texCh3Courtyard = loadChamberArt("/assets/exhibition/ch3_courtyard.jpg", false);
+    const texCh3Foyer = loadChamberArt("/assets/exhibition/ch3_foyer.jpg", false);
+    const texCh3Portal = loadChamberArt("/assets/exhibition/ch3_portal.jpg", false);
 
     // Chamber 4: Executive Boardroom
-    const texCh4Boardroom = loadChamberArt("/assets/exhibition/ch4_boardroom.jpg");
-    const texCh4SkyLounge = loadChamberArt("/assets/exhibition/ch4_skylounge.jpg");
-    const texCh4Dining = loadChamberArt("/assets/exhibition/ch4_dining.jpg");
-    const texCh4Vip = loadChamberArt("/assets/exhibition/ch4_vip.jpg");
-    const texCh4Terrace = loadChamberArt("/assets/exhibition/ch4_terrace.jpg");
+    const texCh4Boardroom = loadChamberArt("/assets/exhibition/ch4_boardroom.jpg", false);
+    const texCh4SkyLounge = loadChamberArt("/assets/exhibition/ch4_skylounge.jpg", false);
+    const texCh4Dining = loadChamberArt("/assets/exhibition/ch4_dining.jpg", false);
+    const texCh4Vip = loadChamberArt("/assets/exhibition/ch4_vip.jpg", false);
+    const texCh4Terrace = loadChamberArt("/assets/exhibition/ch4_terrace.jpg", false);
 
     // Chamber 5: Royal Salon
-    const texCh5Living = loadChamberArt("/assets/exhibition/ch5_living.jpg");
-    const texCh5Lounge = loadChamberArt("/assets/exhibition/ch5_lounge.jpg");
-    const texCh5Staircase = loadChamberArt("/assets/exhibition/ch5_staircase.jpg");
-    const texCh5Minimalist = loadChamberArt("/assets/exhibition/ch5_minimalist.jpg");
-    const texCh5Velvet = loadChamberArt("/assets/exhibition/ch5_velvet.jpg");
+    const texCh5Living = loadChamberArt("/assets/exhibition/ch5_living.jpg", false);
+    const texCh5Lounge = loadChamberArt("/assets/exhibition/ch5_lounge.jpg", false);
+    const texCh5Staircase = loadChamberArt("/assets/exhibition/ch5_staircase.jpg", false);
+    const texCh5Minimalist = loadChamberArt("/assets/exhibition/ch5_minimalist.jpg", false);
+    const texCh5Velvet = loadChamberArt("/assets/exhibition/ch5_velvet.jpg", false);
 
     // Chamber 6: Corporate Reception
-    const texCh6Reception = loadChamberArt("/assets/exhibition/ch6_reception.jpg");
-    const texCh6Chevron = loadChamberArt("/assets/exhibition/ch6_chevron.jpg");
-    const texCh6Foyer = loadChamberArt("/assets/exhibition/ch6_foyer.jpg");
-    const texCh6Lobby = loadChamberArt("/assets/exhibition/ch6_lobby.jpg");
-    const texCh6Workstation = loadChamberArt("/assets/exhibition/ch6_workstation.jpg");
+    const texCh6Reception = loadChamberArt("/assets/exhibition/ch6_reception.jpg", false);
+    const texCh6Chevron = loadChamberArt("/assets/exhibition/ch6_chevron.jpg", false);
+    const texCh6Foyer = loadChamberArt("/assets/exhibition/ch6_foyer.jpg", false);
+    const texCh6Lobby = loadChamberArt("/assets/exhibition/ch6_lobby.jpg", false);
+    const texCh6Workstation = loadChamberArt("/assets/exhibition/ch6_workstation.jpg", false);
 
     const allExhibitionArtTextures = [
       texCh1Living, texCh1Dining, texCh1Parlour, texCh1Lounge, texCh1Media,
@@ -6673,26 +6689,26 @@ export default function ThreeMansionEngine() {
       if (e.cancelable) {
         e.preventDefault();
       }
-      if (e.touches.length === 0) return;
+      if (e.touches.length !== 1) return;
       const currentY = e.touches[0].clientY;
       const now = performance.now();
       const dtTouch = Math.max(1, now - lastTouchTime);
       const deltaY = lastTouchY - currentY;
 
-      touchVelocity = (deltaY / dtTouch) * 0.00020;
+      touchVelocity = (deltaY / dtTouch) * 0.00025;
       lastTouchY = currentY;
       lastTouchTime = now;
 
       const state = sceneStateRef.current;
       state.lastScrollTime = now;
       state.isSnapping = false;
-      state.targetProgress = Math.max(0, Math.min(1, state.targetProgress + deltaY * 0.00030));
+      state.targetProgress = Math.max(0, Math.min(1, state.targetProgress + deltaY * 0.00035));
     };
 
     const handleTouchEnd = () => {
       const state = sceneStateRef.current;
       if (Math.abs(touchVelocity) > 0.0001) {
-        state.targetVelocity = Math.max(-0.004, Math.min(0.004, touchVelocity * 4));
+        state.targetVelocity = Math.max(-0.004, Math.min(0.004, touchVelocity * 5));
       }
     };
 
@@ -6858,7 +6874,9 @@ export default function ThreeMansionEngine() {
       if (!mountRef.current) return;
       const w = mountRef.current.clientWidth || window.innerWidth;
       const h = mountRef.current.clientHeight || window.innerHeight;
-      camera.aspect = w / h;
+      const aspect = w / h;
+      camera.aspect = aspect;
+      camera.fov = computeResponsiveFov(aspect);
       camera.updateProjectionMatrix();
       const currentDpr = Math.min(window.devicePixelRatio || 1, 1.0);
       renderer.setPixelRatio(currentDpr);
@@ -6992,6 +7010,9 @@ export default function ThreeMansionEngine() {
         }
         if (progressTextRef.current) {
           progressTextRef.current.textContent = `${pct}%`;
+        }
+        if (progressMobileTextRef.current) {
+          progressMobileTextRef.current.textContent = `${pct}%`;
         }
 
         const { pos: targetPos, look: targetLook } = getCameraTrajectory(p);
@@ -7127,9 +7148,9 @@ export default function ThreeMansionEngine() {
   }, []);
 
   return (
-    <div className="relative w-full h-screen bg-[#ebe2d6] text-[#2c2621] overflow-hidden select-none">
+    <div className="relative w-full h-[100dvh] bg-[#ebe2d6] text-[#2c2621] overflow-hidden select-none touch-none">
       {/* 1. THREE.JS WEBGL CANVAS CONTAINER */}
-      <div ref={mountRef} className="absolute inset-0 z-0 cursor-grab active:cursor-grabbing" />
+      <div ref={mountRef} className="absolute inset-0 z-0 cursor-grab active:cursor-grabbing touch-none" />
 
       {/* 2. SUBTLE FILM NOISE OVERLAY */}
       <div className="webgl__noise pointer-events-none opacity-20" />
@@ -7139,26 +7160,29 @@ export default function ThreeMansionEngine() {
       <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-black/15 pointer-events-none z-10" />
 
       {/* 4. TOP LUXURY HEADER */}
-      <header className="fixed top-0 left-0 w-full z-40 py-6 px-8 md:px-16 flex items-center justify-between pointer-events-none">
+      <header
+        className="fixed top-0 left-0 w-full z-40 py-3.5 px-4 md:py-6 md:px-16 flex items-center justify-between pointer-events-none"
+        style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
+      >
         <div
           className="pointer-events-auto flex flex-col items-start cursor-pointer group"
           onClick={() => flyToChamber(0)}
         >
-          <span className="font-serif text-xl md:text-2xl tracking-[0.25em] text-[#1e1915] group-hover:text-[#b8975a] transition-colors uppercase font-medium">
+          <span className="font-serif text-lg sm:text-xl md:text-2xl tracking-[0.2em] md:tracking-[0.25em] text-[#1e1915] group-hover:text-[#b8975a] transition-colors uppercase font-medium">
             Gopal Lahoti
           </span>
-          <span className="text-[9px] uppercase font-mono tracking-[0.35em] text-[#b8975a] font-semibold">
+          <span className="text-[8px] md:text-[9px] uppercase font-mono tracking-[0.3em] md:tracking-[0.35em] text-[#b8975a] font-semibold">
             House of Interiors
           </span>
         </div>
 
-        <div className="pointer-events-auto flex items-center space-x-6">
+        <div className="pointer-events-auto flex items-center space-x-3 md:space-x-6">
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className="p-3 rounded-full border border-[#b8975a]/40 hover:border-[#b8975a] text-[#3d332a] hover:text-[#b8975a] transition-all bg-[#f5ede3] cursor-pointer shadow-md"
+            className="p-2 md:p-3 rounded-full border border-[#b8975a]/40 hover:border-[#b8975a] text-[#3d332a] hover:text-[#b8975a] transition-all bg-[#f5ede3] cursor-pointer shadow-md"
             title={isMuted ? "Unmute Ambient Sound" : "Mute Sound"}
           >
-            {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
           </button>
         </div>
       </header>
@@ -7166,16 +7190,20 @@ export default function ThreeMansionEngine() {
       {/* 4.5 GRAND ENTRANCE DOOR OPENING SEQUENCE OVERLAY */}
       {!doorUIHidden && !isDoorOpen && (
         <div
-          className={`absolute inset-0 z-30 pointer-events-none flex flex-col justify-between p-8 md:p-14 select-none transition-opacity duration-300 ease-out ${
+          className={`absolute inset-0 z-30 pointer-events-none flex flex-col justify-between p-5 sm:p-8 md:p-14 select-none transition-opacity duration-300 ease-out ${
             doorUIFading ? "opacity-0 pointer-events-none" : "opacity-100 animate-fadeIn"
           }`}
+          style={{
+            paddingTop: "max(3.5rem, env(safe-area-inset-top))",
+            paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
+          }}
         >
           {/* Center Call To Action */}
-          <div className="flex flex-col items-center justify-center my-auto text-center pointer-events-auto">
+          <div className="flex flex-col items-center justify-center my-auto text-center pointer-events-auto px-2">
             {/* Luxury Estate Badge */}
-            <div className="flex items-center space-x-2 px-4 py-1.5 rounded-full border border-[#b8975a]/30 bg-[#161210]/95 shadow-lg mb-6">
-              <Sparkles size={12} className="text-[#e5c38c]" />
-              <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[#e5c38c] font-medium">
+            <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-full border border-[#b8975a]/30 bg-[#161210]/95 shadow-lg mb-4 md:mb-6">
+              <Sparkles size={11} className="text-[#e5c38c]" />
+              <span className="text-[9px] md:text-[10px] uppercase font-mono tracking-[0.25em] md:tracking-[0.3em] text-[#e5c38c] font-medium">
                 Grand Private Estate
               </span>
             </div>
@@ -7184,17 +7212,17 @@ export default function ThreeMansionEngine() {
               onClick={() => {
                 if (doorState === "ready") triggerOpenDoorRef.current();
               }}
-              className={`relative mb-6 cursor-pointer group ${
+              className={`relative mb-4 md:mb-6 cursor-pointer group ${
                 doorState === "ready" ? "cursor-pointer" : "cursor-default"
               }`}
             >
-              <div className="w-20 h-20 md:w-22 md:h-22 rounded-full border-2 border-[#b8975a]/60 flex flex-col items-center justify-center bg-[#191411]/95 shadow-[0_0_35px_rgba(184,151,90,0.45)] group-hover:shadow-[0_0_60px_rgba(229,195,140,0.85)] group-hover:border-[#e5c38c] transition-all duration-500">
-                <div className="w-14 h-14 rounded-full border border-[#e5c38c]/40 flex items-center justify-center relative">
-                  <span className="font-serif text-[#e5c38c] text-lg font-bold tracking-widest group-hover:scale-110 transition-transform">
+              <div className="w-18 h-18 sm:w-20 sm:h-20 md:w-22 md:h-22 rounded-full border-2 border-[#b8975a]/60 flex flex-col items-center justify-center bg-[#191411]/95 shadow-[0_0_35px_rgba(184,151,90,0.45)] group-hover:shadow-[0_0_60px_rgba(229,195,140,0.85)] group-hover:border-[#e5c38c] transition-all duration-500">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-[#e5c38c]/40 flex items-center justify-center relative">
+                  <span className="font-serif text-[#e5c38c] text-base sm:text-lg font-bold tracking-widest group-hover:scale-110 transition-transform">
                     GL
                   </span>
                   {/* Subtle knocker ring at bottom */}
-                  <div className="absolute -bottom-1 w-7 h-7 rounded-full border-2 border-[#e5c38c]/70 group-hover:translate-y-1 transition-transform" />
+                  <div className="absolute -bottom-1 w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 border-[#e5c38c]/70 group-hover:translate-y-1 transition-transform" />
                 </div>
               </div>
               {doorState === "ready" && (
@@ -7207,7 +7235,7 @@ export default function ThreeMansionEngine() {
 
             {/* Ready State CTA Button */}
             {doorState === "loading" && (
-              <div className="flex items-center space-x-3 px-8 py-3.5 rounded-full border border-[#b8975a]/40 bg-[#181412]/90 text-[#f5eee6] font-serif tracking-[0.25em] text-xs uppercase shadow-2xl">
+              <div className="flex items-center space-x-2.5 px-6 py-3 md:px-8 md:py-3.5 rounded-full border border-[#b8975a]/40 bg-[#181412]/90 text-[#f5eee6] font-serif tracking-[0.2em] md:tracking-[0.25em] text-xs uppercase shadow-2xl">
                 <span className="w-2 h-2 rounded-full bg-[#b8975a] animate-ping" />
                 <span>Preparing Residence...</span>
               </div>
@@ -7219,14 +7247,14 @@ export default function ThreeMansionEngine() {
                   if (doorState === "ready") triggerOpenDoorRef.current();
                 }}
                 disabled={doorState === "opening"}
-                className={`group pointer-events-auto flex items-center space-x-4 px-10 py-4 rounded-full border transition-all duration-500 shadow-2xl ${
+                className={`group pointer-events-auto flex items-center space-x-3 md:space-x-4 px-6 py-3 sm:px-10 sm:py-4 rounded-full border transition-all duration-500 shadow-2xl ${
                   doorState === "opening"
                     ? "border-[#e5c38c] bg-[#2a2119] text-[#fff6e6] scale-105 shadow-[0_0_60px_rgba(229,195,140,0.8)]"
                     : "border-[#b8975a]/60 hover:border-[#ffe8a8] bg-[#1a1410]/95 hover:bg-[#271e17] text-[#fbf6ed] hover:text-white shadow-[0_0_35px_rgba(184,151,90,0.35)] hover:shadow-[0_0_55px_rgba(229,195,140,0.65)] hover:scale-[1.03] cursor-pointer"
                 }`}
               >
-                <span className="w-2.5 h-2.5 rounded-full bg-[#e5c38c] group-hover:scale-125 transition-transform shadow-[0_0_8px_#e5c38c]" />
-                <span className="font-serif tracking-[0.28em] text-xs md:text-sm uppercase">
+                <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-[#e5c38c] group-hover:scale-125 transition-transform shadow-[0_0_8px_#e5c38c]" />
+                <span className="font-serif tracking-[0.2em] sm:tracking-[0.28em] text-xs sm:text-xs md:text-sm uppercase">
                   {doorState === "opening" ? "Unlocking Sanctuary..." : "Enter the Residence"}
                 </span>
                 <span className="text-[#e5c38c] text-sm group-hover:translate-x-1 transition-transform">
@@ -7235,19 +7263,19 @@ export default function ThreeMansionEngine() {
               </button>
             )}
 
-            <p className="text-[11px] font-mono tracking-[0.3em] uppercase text-[#d4c3b2]/70 mt-5">
+            <p className="text-[10px] md:text-[11px] font-mono tracking-[0.25em] md:tracking-[0.3em] uppercase text-[#d4c3b2]/70 mt-4 md:mt-5">
               A Curated Odyssey of Interior Architecture
             </p>
           </div>
 
           {/* Bottom Bar: Audio Atmosphere Note & Skip Option */}
-          <div className="flex items-center justify-between pointer-events-auto pt-4">
-            <span className="text-[10px] font-mono tracking-[0.25em] uppercase text-[#d4c3b2]/50 hidden sm:inline">
+          <div className="flex items-center justify-between pointer-events-auto pt-2">
+            <span className="text-[9px] md:text-[10px] font-mono tracking-[0.2em] md:tracking-[0.25em] uppercase text-[#d4c3b2]/50 hidden sm:inline">
               Audio Atmosphere Enabled
             </span>
             <button
               onClick={() => triggerSkipDoorRef.current()}
-              className="text-[10px] font-mono tracking-[0.28em] uppercase text-[#d4c3b2]/70 hover:text-[#e5c38c] transition-all py-2 px-5 rounded-full border border-white/10 hover:border-[#b8975a]/50 bg-[#181412]/90 hover:bg-black/95 cursor-pointer ml-auto"
+              className="text-[9px] md:text-[10px] font-mono tracking-[0.2em] md:tracking-[0.28em] uppercase text-[#d4c3b2]/70 hover:text-[#e5c38c] transition-all py-1.5 px-4 md:py-2 md:px-5 rounded-full border border-white/10 hover:border-[#b8975a]/50 bg-[#181412]/90 hover:bg-black/95 cursor-pointer ml-auto"
             >
               Skip Intro →
             </button>
@@ -7259,70 +7287,86 @@ export default function ThreeMansionEngine() {
       {activeChamber && (
         <div
           ref={hudRef}
-          className="absolute left-8 md:left-16 top-20 md:top-24 z-30 max-w-lg pointer-events-none transition-all duration-300 ease-out"
+          className="absolute left-4 right-4 md:left-16 md:right-auto top-16 md:top-24 z-30 max-w-none md:max-w-lg pointer-events-none transition-all duration-300 ease-out"
           style={{
             opacity: 0,
             transform: "translate3d(0, 30px, 0)",
           }}
         >
-          <div className="inline-flex items-center space-x-3 mb-3 px-3.5 py-1 rounded-full bg-[#241f1b]/95 border border-[#b8975a]/30">
-            <span className="text-[11px] font-mono tracking-[0.35em] uppercase text-[#e5c38c] font-medium">
+          <div className="inline-flex items-center space-x-2 md:space-x-3 mb-1.5 md:mb-3 px-2.5 py-0.5 md:px-3.5 md:py-1 rounded-full bg-[#241f1b]/95 border border-[#b8975a]/30">
+            <span className="text-[10px] md:text-[11px] font-mono tracking-[0.3em] md:tracking-[0.35em] uppercase text-[#e5c38c] font-medium">
               {activeChamber.chapterNum}
             </span>
-            <span className="w-5 h-[1px] bg-[#e5c38c]/50" />
-            <span className="text-[11px] tracking-[0.2em] uppercase text-white/80 font-light">
+            <span className="w-4 md:w-5 h-[1px] bg-[#e5c38c]/50" />
+            <span className="text-[10px] md:text-[11px] tracking-[0.15em] md:tracking-[0.2em] uppercase text-white/80 font-light">
               {activeChamber.location}
             </span>
           </div>
 
-          <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl tracking-tight text-[#ffffff] leading-[0.95] mb-3 font-light uppercase drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]">
+          <h1 className="font-serif text-2xl sm:text-3xl md:text-5xl lg:text-6xl tracking-tight text-[#ffffff] leading-[0.95] mb-1.5 md:mb-3 font-light uppercase drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]">
             {activeChamber.title1}
             <br />
             <span className="italic font-normal text-white/95">{activeChamber.title2}</span>
           </h1>
 
-          <p className="text-xs md:text-sm text-white/90 font-light tracking-wide max-w-md mb-4 leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] bg-[#1e1915]/90 p-3 rounded-xl border border-white/10">
+          <p className="text-[11px] md:text-sm text-white/90 font-light tracking-wide max-w-xs md:max-w-md mb-2 md:mb-4 leading-snug md:leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] bg-[#1e1915]/90 p-2 md:p-3 rounded-lg md:rounded-xl border border-white/10 line-clamp-2 md:line-clamp-none">
             {activeChamber.subtitle}
           </p>
 
-          <div className="flex flex-wrap items-center gap-2.5 mb-4">
+          <div className="flex flex-wrap items-center gap-2 mb-2 md:mb-4">
             <button
               onClick={() => setShowSpecs(true)}
-              className="pointer-events-auto inline-flex items-center space-x-2 text-[11px] tracking-[0.2em] uppercase text-[#fdfbf7] hover:text-[#181410] px-4 py-2.5 border border-[#b8975a]/50 hover:border-[#b8975a] rounded-full bg-[#241f1b]/95 hover:bg-[#b8975a] transition-all duration-300 group cursor-pointer shadow-xl font-medium"
+              className="pointer-events-auto inline-flex items-center space-x-1.5 md:space-x-2 text-[10px] md:text-[11px] tracking-[0.15em] md:tracking-[0.2em] uppercase text-[#fdfbf7] hover:text-[#181410] px-3 py-1.5 md:px-4 md:py-2.5 border border-[#b8975a]/50 hover:border-[#b8975a] rounded-full bg-[#241f1b]/95 hover:bg-[#b8975a] transition-all duration-300 group cursor-pointer shadow-xl font-medium"
             >
               <span>Chamber Details</span>
-              <ChevronRight size={13} className="group-hover:translate-x-1 transition-transform" />
+              <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
             </button>
 
             {EXHIBITION_CATALOG[activeChamber.id] && EXHIBITION_CATALOG[activeChamber.id].length > 0 && (
-              <button
-                onClick={() => setInspectedArtwork(EXHIBITION_CATALOG[activeChamber.id][0])}
-                className="pointer-events-auto inline-flex items-center space-x-2 text-[11px] tracking-[0.2em] uppercase text-[#e5c38c] hover:text-[#181410] px-4 py-2.5 border border-[#e5c38c]/40 hover:border-[#e5c38c] rounded-full bg-[#1e1915]/95 hover:bg-[#e5c38c] transition-all duration-300 group cursor-pointer shadow-xl font-medium"
-              >
-                <Layers size={13} className="text-[#e5c38c] group-hover:text-[#181410] transition-colors" />
-                <span>Wall Gallery (5 Works)</span>
-              </button>
+              <>
+                {/* Mobile & Tablet Toggle Button */}
+                <button
+                  onClick={() => setShowMobileGallery(!showMobileGallery)}
+                  className="pointer-events-auto lg:hidden inline-flex items-center space-x-1.5 text-[10px] sm:text-[11px] tracking-[0.15em] uppercase text-[#e5c38c] hover:text-[#181410] px-3 py-1.5 border border-[#e5c38c]/40 hover:border-[#e5c38c] rounded-full bg-[#1e1915]/95 hover:bg-[#e5c38c] transition-all duration-300 group cursor-pointer shadow-xl font-medium"
+                >
+                  <Layers size={12} className="text-[#e5c38c] group-hover:text-[#181410] transition-colors" />
+                  <span>Wall Art (5) {showMobileGallery ? "▲" : "▼"}</span>
+                </button>
+
+                {/* Desktop Gallery Button */}
+                <button
+                  onClick={() => setInspectedArtwork(EXHIBITION_CATALOG[activeChamber.id][0])}
+                  className="pointer-events-auto hidden lg:inline-flex items-center space-x-2 text-[11px] tracking-[0.2em] uppercase text-[#e5c38c] hover:text-[#181410] px-4 py-2.5 border border-[#e5c38c]/40 hover:border-[#e5c38c] rounded-full bg-[#1e1915]/95 hover:bg-[#e5c38c] transition-all duration-300 group cursor-pointer shadow-xl font-medium"
+                >
+                  <Layers size={13} className="text-[#e5c38c] group-hover:text-[#181410] transition-colors" />
+                  <span>Wall Gallery (5 Works)</span>
+                </button>
+              </>
             )}
           </div>
 
-          {/* Interactive Curated Wall Artwork Strip */}
+          {/* Interactive Curated Wall Artwork Strip (Always on Desktop, Expandable on Mobile & Tablet) */}
           {EXHIBITION_CATALOG[activeChamber.id] && (
-            <div className="pointer-events-auto bg-[#181412]/95 border border-[#b8975a]/40 rounded-2xl p-3.5 shadow-2xl max-w-md">
-              <div className="flex items-center justify-between mb-2.5 text-[10px] font-mono tracking-[0.25em] uppercase text-[#e5c38c]">
-                <span className="flex items-center space-x-2">
+            <div
+              className={`pointer-events-auto bg-[#181412]/95 border border-[#b8975a]/40 rounded-xl lg:rounded-2xl p-2.5 lg:p-3.5 shadow-2xl max-w-sm lg:max-w-md ${
+                showMobileGallery ? "block" : "hidden lg:block"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2 text-[9px] lg:text-[10px] font-mono tracking-[0.2em] lg:tracking-[0.25em] uppercase text-[#e5c38c]">
+                <span className="flex items-center space-x-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#e5c38c] animate-pulse" />
-                  <span>Curated Wall Installations</span>
+                  <span>Curated Wall Art</span>
                 </span>
-                <span className="text-white/60">Click to Change Wall Art</span>
+                <span className="text-white/60">Tap to Change</span>
               </div>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-5 gap-1.5 md:gap-2">
                 {EXHIBITION_CATALOG[activeChamber.id].map((art, idx) => {
                   const isSelected = activeArtworks[activeChamber.id] === art.id;
                   return (
                     <button
                       key={art.id}
                       onClick={() => handleSelectArtwork(activeChamber.id, art)}
-                      className={`group relative aspect-[4/3] rounded-lg overflow-hidden border transition-all duration-300 cursor-pointer shadow-md bg-black/40 ${
+                      className={`group relative aspect-[4/3] rounded-md md:rounded-lg overflow-hidden border transition-all duration-300 cursor-pointer shadow-md bg-black/40 ${
                         isSelected
                           ? "border-[#e5c38c] ring-2 ring-[#e5c38c] shadow-[0_0_15px_rgba(229,195,140,0.75)] scale-105"
                           : "border-white/20 hover:border-[#e5c38c]/70 hover:scale-105"
@@ -7343,10 +7387,10 @@ export default function ThreeMansionEngine() {
                         }`}
                       />
                       {isSelected && (
-                        <span className="absolute top-1 left-1 w-2 h-2 rounded-full bg-[#e5c38c] shadow-[0_0_6px_#e5c38c]" />
+                        <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-[#e5c38c] shadow-[0_0_6px_#e5c38c]" />
                       )}
                       <span
-                        className={`absolute bottom-1 right-1 text-[8px] font-mono px-1 rounded transition-colors ${
+                        className={`absolute bottom-0.5 right-0.5 md:bottom-1 md:right-1 text-[7px] md:text-[8px] font-mono px-0.5 md:px-1 rounded transition-colors ${
                           isSelected ? "text-black bg-[#e5c38c] font-bold" : "text-white/90 bg-black/70"
                         }`}
                       >
@@ -7363,11 +7407,11 @@ export default function ThreeMansionEngine() {
 
       {/* 6. HALLWAY SCROLL HINT */}
       {!activeChamber && isDoorOpen && !isLightingSequence && (
-        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 text-center pointer-events-none animate-pulse">
-          <div className="flex flex-col items-center space-y-2 px-5 py-2.5 rounded-full bg-[#fbf8f2]/95 border border-[#b8975a]/30 shadow-md pointer-events-none">
-            <Compass size={18} className="text-[#b8975a] animate-spin" style={{ animationDuration: "12s" }} />
-            <span className="text-[10px] uppercase font-mono tracking-[0.35em] text-[#3d3227] font-semibold">
-              Scroll to Glide Through Mansion
+        <div className="absolute bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 z-20 text-center pointer-events-none animate-pulse">
+          <div className="flex flex-col items-center space-y-1.5 md:space-y-2 px-4 py-2 md:px-5 md:py-2.5 rounded-full bg-[#fbf8f2]/95 border border-[#b8975a]/30 shadow-md pointer-events-none">
+            <Compass size={16} className="text-[#b8975a] animate-spin" style={{ animationDuration: "12s" }} />
+            <span className="text-[9px] md:text-[10px] uppercase font-mono tracking-[0.25em] md:tracking-[0.35em] text-[#3d3227] font-semibold">
+              Swipe or Scroll to Glide
             </span>
           </div>
         </div>
@@ -7375,10 +7419,10 @@ export default function ThreeMansionEngine() {
 
       {/* 6b. ILLUMINATION WAVE SKIP INTRO BUTTON */}
       {isLightingSequence && (
-        <div className="fixed top-8 right-8 z-50 pointer-events-auto animate-fadeIn">
+        <div className="fixed top-6 right-4 md:top-8 md:right-8 z-50 pointer-events-auto animate-fadeIn">
           <button
             onClick={() => triggerSkipDoorRef.current()}
-            className="text-[10px] font-mono tracking-[0.28em] uppercase text-[#e5c38c] hover:text-white transition-all py-2 px-5 rounded-full border border-[#b8975a]/50 bg-[#181412]/90 hover:bg-black/95 cursor-pointer shadow-xl flex items-center space-x-2"
+            className="text-[9px] md:text-[10px] font-mono tracking-[0.2em] md:tracking-[0.28em] uppercase text-[#e5c38c] hover:text-white transition-all py-1.5 px-4 md:py-2 md:px-5 rounded-full border border-[#b8975a]/50 bg-[#181412]/90 hover:bg-black/95 cursor-pointer shadow-xl flex items-center space-x-1.5"
           >
             <span>Skip Intro</span>
             <span>→</span>
@@ -7388,9 +7432,12 @@ export default function ThreeMansionEngine() {
 
       {/* 7. FIXED BOTTOM NAVIGATION BAR */}
       {isDoorOpen && !isLightingSequence && (
-        <nav className="fixed bottom-0 left-0 w-full z-40 py-5 px-8 md:px-16 flex flex-col md:flex-row items-center justify-between border-t border-[#b8975a]/30 bg-[#1a1614]/98 pointer-events-none shadow-2xl animate-fadeIn">
+        <nav
+          className="fixed bottom-0 left-0 w-full z-40 py-2.5 md:py-4 px-3 md:px-16 flex flex-col md:flex-row items-center justify-between border-t border-[#b8975a]/30 bg-[#1a1614]/98 pointer-events-none shadow-2xl animate-fadeIn"
+          style={{ paddingBottom: "max(0.6rem, env(safe-area-inset-bottom))" }}
+        >
           {/* Continuous Gold Scroll Progress Line */}
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-black/40 pointer-events-none">
+          <div className="absolute top-0 left-0 w-full h-[2.5px] bg-black/40 pointer-events-none">
             <div
               ref={progressLineRef}
               className="h-full bg-gradient-to-r from-[#b8975a] via-[#e5c38c] to-[#fff3d4] transition-all duration-75 ease-out shadow-[0_0_8px_rgba(184,151,90,0.8)]"
@@ -7398,15 +7445,15 @@ export default function ThreeMansionEngine() {
             />
           </div>
 
-          {/* Room Navigation Links */}
-          <div className="pointer-events-auto flex items-center space-x-6 md:space-x-10 text-[11px] font-mono tracking-[0.25em] uppercase text-neutral-400">
+          {/* Desktop Room Navigation Links */}
+          <div className="hidden lg:flex pointer-events-auto items-center space-x-6 xl:space-x-10 text-[11px] font-mono tracking-[0.25em] uppercase text-neutral-400">
             {CHAMBER_DATA.map((ch) => {
               const isCurrent = activeChamber?.id === ch.id;
               return (
                 <button
                   key={ch.id}
                   onClick={() => flyToChamber(ch.heroProgress)}
-                  className={`transition-colors duration-300 flex items-center space-x-2 py-1 ${
+                  className={`transition-colors duration-300 flex items-center space-x-2 py-1 cursor-pointer ${
                     isCurrent
                       ? "text-[#e5c38c] font-semibold"
                       : "hover:text-[#fbf8f2] text-neutral-400"
@@ -7424,8 +7471,58 @@ export default function ThreeMansionEngine() {
             })}
           </div>
 
-          {/* Global Progress Indicator */}
-          <div className="hidden md:flex items-center space-x-3 text-[10px] font-mono tracking-[0.25em] text-[#d4c3b2]">
+          {/* Mobile & Tablet Native Pill Navigation Bar */}
+          <div className="flex lg:hidden pointer-events-auto items-center justify-between w-full px-1">
+            <button
+              onClick={() => {
+                const currentIdx = activeChamber ? CHAMBER_DATA.findIndex((c) => c.id === activeChamber.id) : 0;
+                const prevIdx = Math.max(0, currentIdx - 1);
+                flyToChamber(CHAMBER_DATA[prevIdx].heroProgress);
+              }}
+              className="p-1.5 sm:p-2 rounded-full border border-white/10 text-white/80 hover:text-[#e5c38c] transition-colors cursor-pointer"
+              title="Previous Chamber"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <div className="flex items-center space-x-1.5 sm:space-x-2 overflow-x-auto no-scrollbar py-0.5 mx-2">
+              {CHAMBER_DATA.map((ch) => {
+                const isCurrent = activeChamber?.id === ch.id;
+                return (
+                  <button
+                    key={ch.id}
+                    onClick={() => flyToChamber(ch.heroProgress)}
+                    className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[9px] sm:text-[10px] font-mono tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+                      isCurrent
+                        ? "bg-[#e5c38c] text-black font-bold shadow-[0_0_10px_rgba(229,195,140,0.6)]"
+                        : "bg-white/5 text-neutral-400 border border-white/10"
+                    }`}
+                  >
+                    {ch.chapterNum.split("/")[0]}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => {
+                const currentIdx = activeChamber ? CHAMBER_DATA.findIndex((c) => c.id === activeChamber.id) : 0;
+                const nextIdx = Math.min(CHAMBER_DATA.length - 1, currentIdx + 1);
+                flyToChamber(CHAMBER_DATA[nextIdx].heroProgress);
+              }}
+              className="p-1.5 sm:p-2 rounded-full border border-white/10 text-white/80 hover:text-[#e5c38c] transition-colors cursor-pointer"
+              title="Next Chamber"
+            >
+              <ChevronRight size={16} />
+            </button>
+
+            <span ref={progressMobileTextRef} className="text-[#e5c38c] font-mono text-[10px] sm:text-[11px] font-bold ml-1 min-w-[28px] text-right">
+              0%
+            </span>
+          </div>
+
+          {/* Desktop Global Progress Indicator */}
+          <div className="hidden lg:flex items-center space-x-3 text-[10px] font-mono tracking-[0.25em] text-[#d4c3b2]">
             <span>SPATIAL PROGRESS</span>
             <span ref={progressTextRef} className="text-[#e5c38c] font-semibold">0%</span>
           </div>
@@ -7435,41 +7532,41 @@ export default function ThreeMansionEngine() {
       {/* 8. ARCHITECTURAL SPECIFICATIONS DRAWER MODAL */}
       {showSpecs && activeChamber && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/75 backdrop-blur-md transition-all duration-500">
-          <div className="relative w-full max-w-xl h-full bg-[#181513] border-l border-[#b8975a]/30 p-8 md:p-14 flex flex-col justify-between overflow-y-auto animate-slideLeft text-[#f4efe8]">
+          <div className="relative w-full max-w-xl h-full bg-[#181513] border-l border-[#b8975a]/30 p-5 sm:p-8 md:p-14 flex flex-col justify-between overflow-y-auto animate-slideLeft text-[#f4efe8]">
             <div>
-              <div className="flex items-center justify-between pb-8 border-b border-white/10">
-                <span className="text-xs font-mono tracking-[0.3em] uppercase text-[#b8975a] font-semibold">
+              <div className="flex items-center justify-between pb-6 md:pb-8 border-b border-white/10">
+                <span className="text-[11px] md:text-xs font-mono tracking-[0.25em] md:tracking-[0.3em] uppercase text-[#b8975a] font-semibold">
                   {activeChamber.chapterNum} Specification
                 </span>
                 <button
                   onClick={() => setShowSpecs(false)}
-                  className="p-2.5 rounded-full border border-white/20 hover:border-[#b8975a] text-white hover:text-[#b8975a] transition-colors cursor-pointer"
+                  className="p-2 md:p-2.5 rounded-full border border-white/20 hover:border-[#b8975a] text-white hover:text-[#b8975a] transition-colors cursor-pointer"
                 >
                   <X size={16} />
                 </button>
               </div>
 
-              <div className="py-8">
-                <span className="text-[11px] font-mono tracking-[0.25em] text-white/50 uppercase block mb-2">
+              <div className="py-6 md:py-8">
+                <span className="text-[10px] md:text-[11px] font-mono tracking-[0.2em] md:tracking-[0.25em] text-white/50 uppercase block mb-1.5 md:mb-2">
                   {activeChamber.location} · {activeChamber.sqft}
                 </span>
-                <h2 className="font-serif text-3xl md:text-4xl text-[#fdfbf7] uppercase tracking-wide mb-6">
+                <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl text-[#fdfbf7] uppercase tracking-wide mb-4 md:mb-6">
                   {activeChamber.title1} {activeChamber.title2}
                 </h2>
-                <p className="text-neutral-300 font-light leading-relaxed text-sm md:text-base mb-8">
+                <p className="text-neutral-300 font-light leading-relaxed text-xs sm:text-sm md:text-base mb-6 md:mb-8">
                   {activeChamber.specs.description}
                 </p>
 
                 {/* Materials */}
-                <div className="mb-8">
-                  <h3 className="text-xs font-mono tracking-[0.25em] uppercase text-[#b8975a] mb-4 font-semibold">
+                <div className="mb-6 md:mb-8">
+                  <h3 className="text-[11px] md:text-xs font-mono tracking-[0.2em] md:tracking-[0.25em] uppercase text-[#b8975a] mb-3 md:mb-4 font-semibold">
                     Specified Materials
                   </h3>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 md:gap-2">
                     {activeChamber.specs.materials.map((mat, i) => (
                       <span
                         key={i}
-                        className="px-3.5 py-1.5 rounded-full text-xs font-mono tracking-wider border border-[#b8975a]/30 bg-[#2b241e] text-[#f4ede3]"
+                        className="px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-full text-[11px] md:text-xs font-mono tracking-wider border border-[#b8975a]/30 bg-[#2b241e] text-[#f4ede3]"
                       >
                         {mat}
                       </span>
@@ -7479,14 +7576,14 @@ export default function ThreeMansionEngine() {
 
                 {/* Architectural Features */}
                 <div>
-                  <h3 className="text-xs font-mono tracking-[0.25em] uppercase text-[#b8975a] mb-4 font-semibold">
+                  <h3 className="text-[11px] md:text-xs font-mono tracking-[0.2em] md:tracking-[0.25em] uppercase text-[#b8975a] mb-3 md:mb-4 font-semibold">
                     Architectural Systems
                   </h3>
-                  <ul className="space-y-3">
+                  <ul className="space-y-2 md:space-y-3">
                     {activeChamber.specs.details.map((det, i) => (
                       <li
                         key={i}
-                        className="flex items-center space-x-3 text-xs md:text-sm text-neutral-300 font-light"
+                        className="flex items-center space-x-2.5 md:space-x-3 text-xs md:text-sm text-neutral-300 font-light"
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-[#b8975a]" />
                         <span>{det}</span>
@@ -7497,13 +7594,13 @@ export default function ThreeMansionEngine() {
               </div>
             </div>
 
-            <div className="pt-8 border-t border-white/10 flex items-center justify-between">
-              <span className="text-[11px] font-mono tracking-widest text-[#b8975a] font-semibold">
+            <div className="pt-6 md:pt-8 border-t border-white/10 flex items-center justify-between">
+              <span className="text-[10px] md:text-[11px] font-mono tracking-widest text-[#b8975a] font-semibold">
                 PORTFOLIO ARCHIVE
               </span>
               <button
                 onClick={() => setShowSpecs(false)}
-                className="text-xs tracking-[0.2em] uppercase text-white hover:text-[#b8975a] transition-colors cursor-pointer font-medium"
+                className="text-[11px] md:text-xs tracking-[0.15em] md:tracking-[0.2em] uppercase text-white hover:text-[#b8975a] transition-colors cursor-pointer font-medium"
               >
                 Return to Walkthrough →
               </button>
@@ -7514,35 +7611,35 @@ export default function ThreeMansionEngine() {
 
       {/* 8.5 ARTWORK EXHIBITION INSPECTION MODAL */}
       {inspectedArtwork && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-10 bg-black/85 backdrop-blur-xl animate-fadeIn text-[#f4efe8]">
-          <div className="relative w-full max-w-6xl max-h-[92vh] bg-[#161311] border border-[#b8975a]/40 rounded-2xl shadow-[0_0_60px_rgba(0,0,0,0.9)] flex flex-col lg:flex-row overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 md:p-10 bg-black/85 backdrop-blur-xl animate-fadeIn text-[#f4efe8]">
+          <div className="relative w-full max-w-6xl max-h-[92vh] bg-[#161311] border border-[#b8975a]/40 rounded-xl md:rounded-2xl shadow-[0_0_60px_rgba(0,0,0,0.9)] flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
             {/* Close Button */}
             <button
               onClick={() => setInspectedArtwork(null)}
-              className="absolute top-5 right-5 z-20 p-2.5 rounded-full bg-black/60 hover:bg-[#b8975a] border border-white/20 hover:border-[#b8975a] text-white hover:text-black transition-all cursor-pointer shadow-lg"
+              className="absolute top-3 right-3 sm:top-5 sm:right-5 z-20 p-2 sm:p-2.5 rounded-full bg-black/60 hover:bg-[#b8975a] border border-white/20 hover:border-[#b8975a] text-white hover:text-black transition-all cursor-pointer shadow-lg"
               title="Close Artwork Viewer"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
 
             {/* Left Column: Museum Framed Photograph View */}
-            <div className="lg:w-3/5 bg-[#0e0c0b] p-6 md:p-10 flex flex-col items-center justify-center relative overflow-hidden border-b lg:border-b-0 lg:border-r border-[#b8975a]/20">
-              <div className="relative group max-h-[60vh] max-w-full flex items-center justify-center">
+            <div className="lg:w-3/5 bg-[#0e0c0b] p-4 sm:p-6 md:p-10 flex flex-col items-center justify-center relative overflow-hidden border-b lg:border-b-0 lg:border-r border-[#b8975a]/20">
+              <div className="relative group max-h-[38vh] sm:max-h-[50vh] lg:max-h-[60vh] max-w-full flex items-center justify-center">
                 {/* Museum Outer Gold Frame & Bevel Mat */}
-                <div className="p-3 bg-gradient-to-br from-[#d4af37] via-[#94763e] to-[#423114] rounded-lg shadow-2xl">
-                  <div className="p-4 md:p-6 bg-[#f7f3ec] rounded shadow-inner">
+                <div className="p-2 sm:p-3 bg-gradient-to-br from-[#d4af37] via-[#94763e] to-[#423114] rounded-lg shadow-2xl">
+                  <div className="p-2.5 sm:p-4 md:p-6 bg-[#f7f3ec] rounded shadow-inner">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={inspectedArtwork.image}
                       alt={inspectedArtwork.title}
-                      className="max-h-[48vh] w-auto max-w-full object-contain rounded shadow-md"
+                      className="max-h-[30vh] sm:max-h-[42vh] lg:max-h-[48vh] w-auto max-w-full object-contain rounded shadow-md"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Artwork Navigation Controls */}
-              <div className="flex items-center justify-between w-full mt-6 pt-4 border-t border-white/10 text-xs font-mono tracking-widest text-[#e5c38c]">
+              <div className="flex items-center justify-between w-full mt-4 md:mt-6 pt-3 md:pt-4 border-t border-white/10 text-[11px] md:text-xs font-mono tracking-widest text-[#e5c38c]">
                 {(() => {
                   const currentList = EXHIBITION_CATALOG[inspectedArtwork.chamberId] || [];
                   const currentIndex = currentList.findIndex((a) => a.id === inspectedArtwork.id);
@@ -7553,22 +7650,22 @@ export default function ThreeMansionEngine() {
                     <>
                       <button
                         onClick={() => setInspectedArtwork(prevArt)}
-                        className="flex items-center space-x-2 text-white/70 hover:text-[#e5c38c] transition-colors cursor-pointer uppercase text-[11px]"
+                        className="flex items-center space-x-1.5 sm:space-x-2 text-white/70 hover:text-[#e5c38c] transition-colors cursor-pointer uppercase text-[10px] md:text-[11px]"
                       >
-                        <ChevronLeft size={16} />
-                        <span>Previous Work</span>
+                        <ChevronLeft size={14} />
+                        <span>Prev</span>
                       </button>
 
-                      <span className="text-[11px] text-white/50 font-mono">
+                      <span className="text-[10px] md:text-[11px] text-white/50 font-mono">
                         {currentIndex + 1} / {currentList.length}
                       </span>
 
                       <button
                         onClick={() => setInspectedArtwork(nextArt)}
-                        className="flex items-center space-x-2 text-white/70 hover:text-[#e5c38c] transition-colors cursor-pointer uppercase text-[11px]"
+                        className="flex items-center space-x-1.5 sm:space-x-2 text-white/70 hover:text-[#e5c38c] transition-colors cursor-pointer uppercase text-[10px] md:text-[11px]"
                       >
-                        <span>Next Work</span>
-                        <ChevronRight size={16} />
+                        <span>Next</span>
+                        <ChevronRight size={14} />
                       </button>
                     </>
                   );
@@ -7577,25 +7674,25 @@ export default function ThreeMansionEngine() {
             </div>
 
             {/* Right Column: Architectural Narrative & Material Specifications */}
-            <div className="lg:w-2/5 p-6 md:p-10 flex flex-col justify-between overflow-y-auto max-h-[60vh] lg:max-h-[92vh]">
+            <div className="lg:w-2/5 p-4 sm:p-6 md:p-10 flex flex-col justify-between overflow-y-auto max-h-[50vh] sm:max-h-[60vh] lg:max-h-[92vh]">
               <div>
                 {/* Project Badge & Location */}
-                <div className="flex items-center space-x-2 text-xs font-mono tracking-[0.25em] text-[#e5c38c] uppercase mb-3">
-                  <MapPin size={13} className="text-[#b8975a]" />
+                <div className="flex items-center space-x-1.5 md:space-x-2 text-[10px] md:text-xs font-mono tracking-[0.2em] md:tracking-[0.25em] text-[#e5c38c] uppercase mb-2 md:mb-3">
+                  <MapPin size={12} className="text-[#b8975a]" />
                   <span>{inspectedArtwork.location}</span>
                 </div>
 
-                <div className="text-[11px] font-mono tracking-[0.2em] text-white/50 uppercase mb-2">
+                <div className="text-[10px] md:text-[11px] font-mono tracking-[0.15em] md:tracking-[0.2em] text-white/50 uppercase mb-1.5 md:mb-2">
                   {inspectedArtwork.project} · {inspectedArtwork.category}
                 </div>
 
                 {/* Monumental Title */}
-                <h2 className="font-serif text-2xl md:text-3xl lg:text-4xl text-[#fffdfa] uppercase tracking-wide leading-tight mb-5">
+                <h2 className="font-serif text-xl sm:text-2xl md:text-3xl lg:text-4xl text-[#fffdfa] uppercase tracking-wide leading-tight mb-3 md:mb-5">
                   {inspectedArtwork.title}
                 </h2>
 
                 {/* Dimensions badge */}
-                <div className="inline-block px-3 py-1 rounded border border-[#b8975a]/30 bg-[#241f1b] text-[10px] font-mono text-[#e5c38c] tracking-widest uppercase mb-6">
+                <div className="inline-block px-2.5 py-0.5 md:px-3 md:py-1 rounded border border-[#b8975a]/30 bg-[#241f1b] text-[9px] md:text-[10px] font-mono text-[#e5c38c] tracking-widest uppercase mb-4 md:mb-6">
                   {inspectedArtwork.dimensions}
                 </div>
 
