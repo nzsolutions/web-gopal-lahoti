@@ -268,6 +268,8 @@ export default function ThreeMansionEngine() {
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const ambientDroneGainRef = useRef<GainNode | null>(null);
+  const musicAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioFadeTimerRef = useRef<NodeJS.Timeout | number | null>(null);
 
   const getAudioContext = () => {
     if (!audioCtxRef.current) {
@@ -278,30 +280,148 @@ export default function ThreeMansionEngine() {
     return ctx;
   };
 
+  const fadeAudioTo = (targetVol: number, durationSec: number, onComplete?: () => void) => {
+    const audio = musicAudioRef.current;
+    if (!audio) return;
+    if (audioFadeTimerRef.current) {
+      clearInterval(audioFadeTimerRef.current as any);
+      audioFadeTimerRef.current = null;
+    }
+    const startVol = typeof audio.volume === "number" ? audio.volume : 0;
+    const startTime = performance.now();
+    const durationMs = Math.max(50, durationSec * 1000);
+
+    audioFadeTimerRef.current = setInterval(() => {
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(1, elapsed / durationMs);
+      const eased = 0.5 * (1 - Math.cos(progress * Math.PI));
+      const current = startVol + (targetVol - startVol) * eased;
+      try {
+        audio.volume = Math.max(0, Math.min(1, current));
+      } catch (_) {}
+
+      if (progress >= 1) {
+        if (audioFadeTimerRef.current) {
+          clearInterval(audioFadeTimerRef.current as any);
+          audioFadeTimerRef.current = null;
+        }
+        try {
+          audio.volume = Math.max(0, Math.min(1, targetVol));
+        } catch (_) {}
+        if (onComplete) onComplete();
+      }
+    }, 25);
+  };
+
+  const playInstrumentalMusic = () => {
+    try {
+      if (typeof window === "undefined") return;
+      if (!musicAudioRef.current) {
+        const audio = new Audio("/assets/audio/luxury_ambient.mp3");
+        audio.loop = true;
+        audio.volume = 0;
+        audio.preload = "auto";
+        musicAudioRef.current = audio;
+      }
+      const audio = musicAudioRef.current;
+      if (!audio) return;
+
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            fadeAudioTo(0.38, 2.4);
+          })
+          .catch((err) => {
+            console.warn("Audio autoplay deferred until gesture:", err);
+          });
+      }
+    } catch (err) {
+      console.warn("Instrumental audio init error:", err);
+    }
+  };
+
+  // Synchronize mute/unmute state with continuous instrumental music & ambient drone
+  useEffect(() => {
+    const audio = musicAudioRef.current;
+    if (audio) {
+      if (isMuted) {
+        fadeAudioTo(0, 1.0, () => {
+          audio.pause();
+        });
+      } else {
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              fadeAudioTo(0.38, 1.8);
+            })
+            .catch(() => {});
+        } else {
+          fadeAudioTo(0.38, 1.8);
+        }
+      }
+    }
+
+    if (ambientDroneGainRef.current && audioCtxRef.current) {
+      const ctx = audioCtxRef.current;
+      const t = ctx.currentTime;
+      ambientDroneGainRef.current.gain.cancelScheduledValues(t);
+      ambientDroneGainRef.current.gain.linearRampToValueAtTime(isMuted ? 0.0001 : 0.025, t + 1.2);
+    }
+  }, [isMuted]);
+
+  // Pause music if user switches tab, smoothly resume when user returns
+  useEffect(() => {
+    const handleVisibility = () => {
+      const audio = musicAudioRef.current;
+      if (!audio) return;
+      if (document.hidden) {
+        if (!isMuted) {
+          audio.pause();
+        }
+      } else {
+        if (!isMuted && (sceneStateRef.current.doorState === "opening" || sceneStateRef.current.doorState === "opened")) {
+          audio.play().catch(() => {});
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [isMuted]);
+
   const startAmbientDrone = () => {
     try {
       if (ambientDroneGainRef.current) return;
       const ctx = getAudioContext();
       const t = ctx.currentTime;
 
-      const osc = ctx.createOscillator();
+      // Sub-harmonic resonant room tone (55Hz + 73.4Hz warm binaural fifth)
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
       const filter = ctx.createBiquadFilter();
       const gain = ctx.createGain();
 
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(55, t); // deep resonant 55Hz room tone
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(55, t); // deep resonant 55Hz room tone
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(73.42, t); // warm 73.4Hz fifth harmonic
 
       filter.type = "lowpass";
       filter.frequency.setValueAtTime(140, t);
 
       gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.linearRampToValueAtTime(isMuted ? 0.0001 : 0.035, t + 2.0);
+      gain.gain.linearRampToValueAtTime(isMuted ? 0.0001 : 0.025, t + 2.0);
 
-      osc.connect(filter);
+      osc1.connect(filter);
+      osc2.connect(filter);
       filter.connect(gain);
       gain.connect(ctx.destination);
 
-      osc.start();
+      osc1.start();
+      osc2.start();
       ambientDroneGainRef.current = gain;
     } catch (_) {}
   };
@@ -6371,6 +6491,7 @@ export default function ThreeMansionEngine() {
       // Auto-unmute on explicit enter click and initiate audio experience
       setIsMuted(false);
       startAmbientDrone();
+      playInstrumentalMusic();
       playDoorLatchClick();
       playDoorOpeningGroan();
 
@@ -6600,6 +6721,11 @@ export default function ThreeMansionEngine() {
 
       setDoorUIFading(true);
       setDoorUIHidden(true);
+
+      // Auto-unmute and start instrumental music upon entering mansion
+      setIsMuted(false);
+      startAmbientDrone();
+      playInstrumentalMusic();
     };
 
     triggerOpenDoorRef.current = openDoorSequence;
@@ -6807,6 +6933,14 @@ export default function ThreeMansionEngine() {
     window.addEventListener("keydown", handleKeyDown);
 
     // Development / automated inspection helper
+    (window as any).__getAudioState = () => ({
+      hasAudio: !!musicAudioRef.current,
+      paused: musicAudioRef.current ? musicAudioRef.current.paused : null,
+      volume: musicAudioRef.current ? musicAudioRef.current.volume : null,
+      currentTime: musicAudioRef.current ? musicAudioRef.current.currentTime : null,
+      src: musicAudioRef.current ? musicAudioRef.current.src : null,
+    });
+
     (window as any).__setMansionProgress = (prog: number) => {
       if (doorTimelineRef.current) {
         doorTimelineRef.current.kill();
@@ -7120,6 +7254,15 @@ export default function ThreeMansionEngine() {
     return () => {
       cancelAnimationFrame(reqId);
       clearTimeout(safetyTimer);
+      if (musicAudioRef.current) {
+        musicAudioRef.current.pause();
+        musicAudioRef.current.src = "";
+        musicAudioRef.current = null;
+      }
+      if (audioFadeTimerRef.current) {
+        clearInterval(audioFadeTimerRef.current as any);
+        audioFadeTimerRef.current = null;
+      }
       window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
@@ -7129,6 +7272,7 @@ export default function ThreeMansionEngine() {
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("resize", handleResize);
+      delete (window as any).__getAudioState;
       delete (window as any).__setMansionProgress;
       delete (window as any).__switchChamberArtwork;
       document.body.classList.remove("cinematic-active");
@@ -7171,9 +7315,16 @@ export default function ThreeMansionEngine() {
 
         <div className="pointer-events-auto flex items-center space-x-3 md:space-x-6">
           <button
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={() => {
+              const nextMuted = !isMuted;
+              setIsMuted(nextMuted);
+              if (!nextMuted) {
+                playInstrumentalMusic();
+                startAmbientDrone();
+              }
+            }}
             className="p-2 md:p-3 rounded-full border border-[#b8975a]/40 hover:border-[#b8975a] text-[#3d332a] hover:text-[#b8975a] transition-all bg-[#f5ede3] cursor-pointer shadow-md"
-            title={isMuted ? "Unmute Ambient Sound" : "Mute Sound"}
+            title={isMuted ? "Unmute Instrumental Atmosphere" : "Mute Sound"}
           >
             {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
           </button>
@@ -7264,7 +7415,7 @@ export default function ThreeMansionEngine() {
           {/* Bottom Bar: Audio Atmosphere Note & Skip Option */}
           <div className="flex items-center justify-between pointer-events-auto pt-2">
             <span className="text-[9px] md:text-[10px] font-mono tracking-[0.2em] md:tracking-[0.25em] uppercase text-[#d4c3b2]/50 hidden sm:inline">
-              Audio Atmosphere Enabled
+              Bespoke Instrumental Atmosphere
             </span>
             <button
               onClick={() => triggerSkipDoorRef.current()}
