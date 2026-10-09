@@ -617,7 +617,7 @@ export default function ThreeMansionEngine() {
       depth: true,
     });
     renderer.setSize(width, height);
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.0);
     renderer.setPixelRatio(dpr);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.10; // perfectly calibrated to prevent white blowout on marble floor
@@ -5940,6 +5940,10 @@ export default function ThreeMansionEngine() {
       { t: 1.00, pos: new THREE.Vector3(10.5, 2.15, -145.0), look: new THREE.Vector3(20.0, 3.20, -145.0) },
     ];
 
+    const _trajPos = new THREE.Vector3();
+    const _trajLook = new THREE.Vector3();
+    const _trajResult = { pos: _trajPos, look: _trajLook };
+
     const getCameraTrajectory = (progressVal: number) => {
       const clamped = THREE.MathUtils.clamp(progressVal, 0, 1);
       let i = 0;
@@ -5948,7 +5952,9 @@ export default function ThreeMansionEngine() {
       }
       if (i >= cameraWaypoints.length - 1) {
         const last = cameraWaypoints[cameraWaypoints.length - 1];
-        return { pos: last.pos.clone(), look: last.look.clone() };
+        _trajPos.copy(last.pos);
+        _trajLook.copy(last.look);
+        return _trajResult;
       }
       const k0 = cameraWaypoints[i];
       const k1 = cameraWaypoints[i + 1];
@@ -5956,9 +5962,9 @@ export default function ThreeMansionEngine() {
       const rawU = range > 0 ? (clamped - k0.t) / range : 0;
       // Smooth cubic Hermite curve for smooth acceleration/deceleration without jerk
       const u = rawU * rawU * (3 - 2 * rawU);
-      const pos = new THREE.Vector3().lerpVectors(k0.pos, k1.pos, u);
-      const look = new THREE.Vector3().lerpVectors(k0.look, k1.look, u);
-      return { pos, look };
+      _trajPos.lerpVectors(k0.pos, k1.pos, u);
+      _trajLook.lerpVectors(k0.look, k1.look, u);
+      return _trajResult;
     };
 
     // --- 10. PRE-WARM GPU: PRELOAD TEXTURES & SHADERS ACROSS ALL WAYPOINTS ---
@@ -6038,6 +6044,76 @@ export default function ThreeMansionEngine() {
       focalLightSpill.intensity = 4.2;
     };
 
+    // Dynamic Chamber Lighting Configs for Pooled Lights
+    const CHAMBER_LIGHTS = [
+      {
+        heroP: 0.15,
+        spotPos: [-11.5, 6.8, -24.8] as const,
+        spotTarget: [-5.8, 0.35, -20.0] as const,
+        spotColor: 0xffecd0,
+        spotIntensity: 1.8,
+        chPos: [-17.0, 5.2, -20.0] as const,
+        chColor: 0xfff0d6,
+        chIntensity: 0.85,
+        chDist: 11.0,
+      },
+      {
+        heroP: 0.32,
+        spotPos: [19.0, 6.6, -45.0] as const,
+        spotTarget: [17.0, 2.5, -45.0] as const,
+        spotColor: 0xffecd0,
+        spotIntensity: 1.8,
+        chPos: [17.0, 5.3, -45.0] as const,
+        chColor: 0xffebd2,
+        chIntensity: 0.80,
+        chDist: 10.0,
+      },
+      {
+        heroP: 0.49,
+        spotPos: [-19.0, 6.6, -70.0] as const,
+        spotTarget: [-17.0, 2.5, -70.0] as const,
+        spotColor: 0xffeed6,
+        spotIntensity: 1.8,
+        chPos: [-17.0, 5.1, -70.0] as const,
+        chColor: 0xff9e28,
+        chIntensity: 0.90,
+        chDist: 9.5,
+      },
+      {
+        heroP: 0.66,
+        spotPos: [19.0, 6.6, -95.0] as const,
+        spotTarget: [17.0, 2.5, -95.0] as const,
+        spotColor: 0xffecd0,
+        spotIntensity: 1.8,
+        chPos: [17.0, 5.2, -95.0] as const,
+        chColor: 0xffeed8,
+        chIntensity: 0.75,
+        chDist: 10.0,
+      },
+      {
+        heroP: 0.83,
+        spotPos: [-19.0, 6.6, -120.0] as const,
+        spotTarget: [-17.0, 2.5, -120.0] as const,
+        spotColor: 0xffeed6,
+        spotIntensity: 1.8,
+        chPos: [-17.0, 5.2, -120.0] as const,
+        chColor: 0xfff2d4,
+        chIntensity: 0.95,
+        chDist: 12.0,
+      },
+      {
+        heroP: 0.97,
+        spotPos: [19.0, 6.6, -145.0] as const,
+        spotTarget: [17.0, 2.5, -145.0] as const,
+        spotColor: 0xffecd0,
+        spotIntensity: 1.8,
+        chPos: [17.0, 5.1, -145.0] as const,
+        chColor: 0xfff4e6,
+        chIntensity: 0.80,
+        chDist: 10.0,
+      },
+    ];
+
     const warmUpGPU = () => {
       // 1. Pre-upload all loaded textures to VRAM
       allTextures.forEach((tex) => {
@@ -6062,15 +6138,55 @@ export default function ThreeMansionEngine() {
       const wasIntroComplete = sceneStateRef.current.introComplete;
       snapAllLightsToFull();
 
-      // 4. Compile across full mansion trajectory (hallway, Chamber I, II, III, IV, V, VI)
-      const sampleWaypoints = [0.0, 0.08, 0.15, 0.23, 0.32, 0.41, 0.49, 0.58, 0.66, 0.75, 0.83, 0.90, 0.97];
-      for (const t of sampleWaypoints) {
-        const { pos, look } = getCameraTrajectory(t);
+      // 4. Exhaustive Pre-Compilation:
+      // Temporarily disable frustum culling on all scene meshes so Three.js compiler compiles EVERY single
+      // material, texture, chandelier, artifact, and particle across all 6 rooms and hallway
+      const culledMeshes: THREE.Object3D[] = [];
+      scene.traverse((obj) => {
+        if (obj.frustumCulled) {
+          culledMeshes.push(obj);
+          obj.frustumCulled = false;
+        }
+      });
+
+      // Compile across all 6 chambers with their respective pooled lights activated
+      for (let chIdx = 0; chIdx < CHAMBER_LIGHTS.length; chIdx++) {
+        const ch = CHAMBER_LIGHTS[chIdx];
+        if (activeChamberSpot && activeChandelierLight) {
+          activeChamberSpot.position.set(ch.spotPos[0], ch.spotPos[1], ch.spotPos[2]);
+          activeChamberSpot.target.position.set(ch.spotTarget[0], ch.spotTarget[1], ch.spotTarget[2]);
+          activeChamberSpot.color.setHex(ch.spotColor);
+          activeChamberSpot.intensity = ch.spotIntensity;
+          activeChandelierLight.position.set(ch.chPos[0], ch.chPos[1], ch.chPos[2]);
+          activeChandelierLight.color.setHex(ch.chColor);
+          activeChandelierLight.intensity = ch.chIntensity;
+        }
+        if (sanctumDiyaLight) {
+          sanctumDiyaLight.intensity = chIdx === 2 ? 1.0 : 0.0;
+        }
+        const { pos, look } = getCameraTrajectory(ch.heroP);
         camera.position.copy(pos);
         camera.lookAt(look);
         camera.updateMatrixWorld();
         renderer.compile(scene, camera);
+        renderer.render(scene, camera);
       }
+
+      // Also compile along hallway gallery waypoints
+      const hallwayP = [0.0, 0.08, 0.25, 0.42, 0.59, 0.76, 0.93];
+      for (const hp of hallwayP) {
+        const { pos, look } = getCameraTrajectory(hp);
+        camera.position.copy(pos);
+        camera.lookAt(look);
+        camera.updateMatrixWorld();
+        renderer.compile(scene, camera);
+        renderer.render(scene, camera);
+      }
+
+      // Restore original frustum culling
+      culledMeshes.forEach((obj) => {
+        obj.frustumCulled = true;
+      });
 
       // 5. If door is still loading or ready, restore pre-door state outside closed doors
       if (sceneStateRef.current.doorState === "loading" || sceneStateRef.current.doorState === "ready") {
@@ -6455,12 +6571,6 @@ export default function ThreeMansionEngine() {
         dRefs.doorGroup.visible = false;
       }
 
-      snapAllLightsToFull();
-      warmUpGPU();
-
-      setDoorUIFading(true);
-      setDoorUIHidden(true);
-
       sceneStateRef.current.doorState = "opened";
       sceneStateRef.current.currentProgress = 0;
       sceneStateRef.current.targetProgress = 0;
@@ -6468,6 +6578,12 @@ export default function ThreeMansionEngine() {
       setDoorState("opened");
       setIsDoorOpen(true);
       setIsLightingSequence(false);
+
+      snapAllLightsToFull();
+      warmUpGPU();
+
+      setDoorUIFading(true);
+      setDoorUIHidden(true);
     };
 
     triggerOpenDoorRef.current = openDoorSequence;
@@ -6475,6 +6591,16 @@ export default function ThreeMansionEngine() {
 
     // --- 11. SCROLL CAPTURE & MOMENTUM GLIDE INTERACTION ---
     const handleWheel = (e: WheelEvent) => {
+      // If lighting sequence is running and user scrolls, immediately finish lighting sequence and let them move!
+      if (sceneStateRef.current.doorState === "opened" && sceneStateRef.current.isLightingSequence) {
+        if (lightingTimelineRef.current) {
+          lightingTimelineRef.current.progress(1);
+        }
+        snapAllLightsToFull();
+        sceneStateRef.current.isLightingSequence = false;
+        setIsLightingSequence(false);
+      }
+
       if (sceneStateRef.current.doorState !== "opened" || sceneStateRef.current.isLightingSequence) {
         if (e.cancelable) e.preventDefault();
         return;
@@ -6486,23 +6612,30 @@ export default function ThreeMansionEngine() {
       state.isSnapping = false;
       state.lastScrollTime = performance.now();
 
-      // Normalize delta across operating systems, browsers, and devices (mouse wheel, free-spin, trackpad)
+      // Normalize delta across operating systems, browsers, and devices
       let rawDelta = e.deltaY;
       if (e.deltaMode === 1) {
-        rawDelta *= 30; // DOM_DELTA_LINE
+        rawDelta *= 33; // DOM_DELTA_LINE
       } else if (e.deltaMode === 2) {
         rawDelta *= 600; // DOM_DELTA_PAGE
       }
 
-      // Smooth buttery velocity impulse with non-linear saturation
-      // Trackpads give small deltas (~2-20), mouse wheels give discrete chunks (~100)
-      const absDelta = Math.abs(rawDelta);
-      const sign = Math.sign(rawDelta);
-      const impulse = sign * Math.min(absDelta, 140) * 0.00028;
+      // Smooth buttery progress accumulation:
+      // Trackpads fire high-frequency small deltas (|delta| < 40).
+      // Mouse wheels fire discrete notches (|delta| >= 40, usually 100).
+      // 1 standard wheel notch (~100px) moves ~0.0135 progress for a dignified architectural stroll (~12 notches between chambers).
+      // Trackpad fingers translate 1:1 with silky continuous precision.
+      const isTrackpad = Math.abs(rawDelta) < 40;
+      const progressDelta = isTrackpad
+        ? rawDelta * 0.00012
+        : Math.sign(rawDelta) * Math.min(Math.abs(rawDelta), 160) * 0.000135;
 
-      state.targetVelocity += impulse;
-      // Soft clamp on maximum instantaneous impulse
-      state.targetVelocity = Math.max(-0.022, Math.min(0.022, state.targetVelocity));
+      state.targetProgress = Math.max(0, Math.min(1, state.targetProgress + progressDelta));
+
+      // Gentle kinetic glide inertia on fast flicks without runaway acceleration
+      if (Math.abs(rawDelta) > 80) {
+        state.targetVelocity = Math.max(-0.003, Math.min(0.003, state.targetVelocity + Math.sign(rawDelta) * 0.00075));
+      }
     };
 
     let touchStartY = 0;
@@ -6525,6 +6658,14 @@ export default function ThreeMansionEngine() {
     };
 
     const handleTouchMove = (e: TouchEvent) => {
+      if (sceneStateRef.current.doorState === "opened" && sceneStateRef.current.isLightingSequence) {
+        if (lightingTimelineRef.current) {
+          lightingTimelineRef.current.progress(1);
+        }
+        snapAllLightsToFull();
+        sceneStateRef.current.isLightingSequence = false;
+        setIsLightingSequence(false);
+      }
       if (sceneStateRef.current.doorState !== "opened" || sceneStateRef.current.isLightingSequence) {
         if (e.cancelable) e.preventDefault();
         return;
@@ -6538,20 +6679,20 @@ export default function ThreeMansionEngine() {
       const dtTouch = Math.max(1, now - lastTouchTime);
       const deltaY = lastTouchY - currentY;
 
-      touchVelocity = (deltaY / dtTouch) * 0.00035;
+      touchVelocity = (deltaY / dtTouch) * 0.00020;
       lastTouchY = currentY;
       lastTouchTime = now;
 
       const state = sceneStateRef.current;
       state.lastScrollTime = now;
       state.isSnapping = false;
-      state.targetProgress = Math.max(0, Math.min(1, state.targetProgress + deltaY * 0.0011));
+      state.targetProgress = Math.max(0, Math.min(1, state.targetProgress + deltaY * 0.00030));
     };
 
     const handleTouchEnd = () => {
       const state = sceneStateRef.current;
       if (Math.abs(touchVelocity) > 0.0001) {
-        state.targetVelocity = Math.max(-0.02, Math.min(0.02, touchVelocity * 16));
+        state.targetVelocity = Math.max(-0.004, Math.min(0.004, touchVelocity * 4));
       }
     };
 
@@ -6587,14 +6728,14 @@ export default function ThreeMansionEngine() {
       const now = performance.now();
       const dtPtr = Math.max(1, now - lastPointerTime);
       const deltaY = lastPointerY - e.clientY;
-      pointerVelocity = (deltaY / dtPtr) * 0.00035;
+      pointerVelocity = (deltaY / dtPtr) * 0.00020;
       lastPointerY = e.clientY;
       lastPointerTime = now;
 
       const state = sceneStateRef.current;
       state.lastScrollTime = now;
       state.isSnapping = false;
-      state.targetProgress = Math.max(0, Math.min(1, state.targetProgress + deltaY * 0.0012));
+      state.targetProgress = Math.max(0, Math.min(1, state.targetProgress + deltaY * 0.00032));
     };
 
     const handlePointerUp = () => {
@@ -6602,7 +6743,7 @@ export default function ThreeMansionEngine() {
         isPointerDown = false;
         const state = sceneStateRef.current;
         if (Math.abs(pointerVelocity) > 0.0001) {
-          state.targetVelocity = Math.max(-0.02, Math.min(0.02, pointerVelocity * 16));
+          state.targetVelocity = Math.max(-0.004, Math.min(0.004, pointerVelocity * 4));
         }
       }
     };
@@ -6626,7 +6767,7 @@ export default function ThreeMansionEngine() {
         e.preventDefault();
         state.isSnapping = false;
         state.lastScrollTime = performance.now();
-        state.targetVelocity += 0.012;
+        state.targetProgress = Math.min(1, state.targetProgress + 0.016);
       } else if (
         e.key === "ArrowUp" ||
         e.key === "ArrowLeft" ||
@@ -6635,7 +6776,7 @@ export default function ThreeMansionEngine() {
         e.preventDefault();
         state.isSnapping = false;
         state.lastScrollTime = performance.now();
-        state.targetVelocity -= 0.012;
+        state.targetProgress = Math.max(0, state.targetProgress - 0.016);
       }
     };
 
@@ -6719,81 +6860,11 @@ export default function ThreeMansionEngine() {
       const h = mountRef.current.clientHeight || window.innerHeight;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      const currentDpr = Math.min(window.devicePixelRatio || 1, 1.25);
+      const currentDpr = Math.min(window.devicePixelRatio || 1, 1.0);
       renderer.setPixelRatio(currentDpr);
       renderer.setSize(w, h);
     };
     window.addEventListener("resize", handleResize);
-
-    // Dynamic Chamber Lighting Configs for Pooled Lights
-    const CHAMBER_LIGHTS = [
-      {
-        heroP: 0.15,
-        spotPos: [-11.5, 6.8, -24.8] as const,
-        spotTarget: [-5.8, 0.35, -20.0] as const,
-        spotColor: 0xffecd0,
-        spotIntensity: 1.8,
-        chPos: [-17.0, 5.2, -20.0] as const,
-        chColor: 0xfff0d6,
-        chIntensity: 0.85,
-        chDist: 11.0,
-      },
-      {
-        heroP: 0.32,
-        spotPos: [19.0, 6.6, -45.0] as const,
-        spotTarget: [17.0, 2.5, -45.0] as const,
-        spotColor: 0xffecd0,
-        spotIntensity: 1.8,
-        chPos: [17.0, 5.3, -45.0] as const,
-        chColor: 0xffebd2,
-        chIntensity: 0.80,
-        chDist: 10.0,
-      },
-      {
-        heroP: 0.49,
-        spotPos: [-19.0, 6.6, -70.0] as const,
-        spotTarget: [-17.0, 2.5, -70.0] as const,
-        spotColor: 0xffeed6,
-        spotIntensity: 1.8,
-        chPos: [-17.0, 5.1, -70.0] as const,
-        chColor: 0xff9e28,
-        chIntensity: 0.90,
-        chDist: 9.5,
-      },
-      {
-        heroP: 0.66,
-        spotPos: [19.0, 6.6, -95.0] as const,
-        spotTarget: [17.0, 2.5, -95.0] as const,
-        spotColor: 0xffecd0,
-        spotIntensity: 1.8,
-        chPos: [17.0, 5.2, -95.0] as const,
-        chColor: 0xffeed8,
-        chIntensity: 0.75,
-        chDist: 10.0,
-      },
-      {
-        heroP: 0.83,
-        spotPos: [-19.0, 6.6, -120.0] as const,
-        spotTarget: [-17.0, 2.5, -120.0] as const,
-        spotColor: 0xffeed6,
-        spotIntensity: 1.8,
-        chPos: [-17.0, 5.2, -120.0] as const,
-        chColor: 0xfff2d4,
-        chIntensity: 0.95,
-        chDist: 12.0,
-      },
-      {
-        heroP: 0.97,
-        spotPos: [19.0, 6.6, -145.0] as const,
-        spotTarget: [17.0, 2.5, -145.0] as const,
-        spotColor: 0xffecd0,
-        spotIntensity: 1.8,
-        chPos: [17.0, 5.1, -145.0] as const,
-        chColor: 0xfff4e6,
-        chIntensity: 0.80,
-        chDist: 10.0,
-      },
-    ];
 
     // --- 12. ANIMATION RAF LOOP (BUTTER-SMOOTH HARDWARE WEBGL) ---
     let reqId: number;
@@ -6801,7 +6872,7 @@ export default function ThreeMansionEngine() {
     let lastFrameTime = performance.now();
     let avgFrameTime = 16.6;
     let frameCount = 0;
-    const targetDpr = Math.min(window.devicePixelRatio || 1, 1.25);
+    const targetDpr = Math.min(window.devicePixelRatio || 1, 1.0);
     let activeDpr = targetDpr;
 
     const renderLoop = () => {
@@ -6866,45 +6937,44 @@ export default function ThreeMansionEngine() {
         camera.lookAt(dRefs.cameraLook.x, dRefs.cameraLook.y, dRefs.cameraLook.z);
       } else {
         // --- BUTTER-SMOOTH KINETIC GLIDE MOMENTUM ---
-        // 1. Frame-rate independent velocity integration
-        const vAlpha = 1.0 - Math.exp(-22.0 * dt);
-        state.scrollVelocity += (state.targetVelocity - state.scrollVelocity) * vAlpha;
-
-        // 2. Continuous silky friction decay (friction coefficient 0.88/frame)
-        const friction = Math.pow(0.88, dt * 60);
+        // 1. Silky friction decay on flick velocity
+        const friction = Math.pow(0.85, dt * 60);
         state.targetVelocity *= friction;
-        if (Math.abs(state.targetVelocity) < 0.000005) {
+        if (Math.abs(state.targetVelocity) < 0.00001) {
           state.targetVelocity = 0;
         }
 
-        // 3. Magnetic Gentle Hero Latch (only when user has completely paused near a hero view)
+        // 2. Accumulate flick velocity into targetProgress
+        if (state.targetVelocity !== 0) {
+          state.targetProgress = Math.max(0, Math.min(1, state.targetProgress + state.targetVelocity));
+        }
+
+        // 3. Magnetic Gentle Hero Latch (only when user has completely paused for > 1.2s near a hero view)
         const timeSinceScroll = currentTime - state.lastScrollTime;
-        if (!isPointerDown && timeSinceScroll > 1000 && Math.abs(state.scrollVelocity) < 0.0002) {
+        if (!isPointerDown && timeSinceScroll > 1200 && Math.abs(state.targetVelocity) < 0.0001) {
           for (const ch of CHAMBER_DATA) {
             const dist = ch.heroProgress - state.targetProgress;
-            if (Math.abs(dist) < 0.026) {
-              const magneticPull = dist * (1.0 - Math.exp(-3.5 * dt));
+            if (Math.abs(dist) < 0.020) {
+              const magneticPull = dist * (1.0 - Math.exp(-3.0 * dt));
               state.targetProgress += magneticPull;
               break;
             }
           }
         }
 
-        // 4. Update targetProgress with momentum
-        state.targetProgress = Math.max(0, Math.min(1, state.targetProgress + state.scrollVelocity));
-
-        // 5. Critically damped camera progress glide
-        const cameraAlpha = 1.0 - Math.exp(-12.5 * dt);
+        // 4. Critically damped buttery camera glide toward targetProgress
+        // followSpeed = 9.0 provides responsive tracking and silky, cushioned steadycam deceleration
+        const cameraAlpha = 1.0 - Math.exp(-9.0 * dt);
         state.currentProgress += (state.targetProgress - state.currentProgress) * cameraAlpha;
         const p = Math.max(0, Math.min(1, state.currentProgress));
 
-        // Spatial chamber geometry culling: only render chamber geometry when near its portal
-        const c1Vis = p >= 0.04 && p <= 0.26;
-        const c2Vis = p >= 0.21 && p <= 0.43;
-        const c3Vis = p >= 0.38 && p <= 0.60;
-        const c4Vis = p >= 0.55 && p <= 0.77;
-        const c5Vis = p >= 0.72 && p <= 0.92;
-        const c6Vis = p >= 0.87 && p <= 1.00;
+        // Spatial chamber geometry culling: each chamber is strictly rendered only when visible through portal/entrance
+        const c1Vis = p >= 0.05 && p <= 0.23;
+        const c2Vis = p >= 0.24 && p <= 0.40;
+        const c3Vis = p >= 0.41 && p <= 0.57;
+        const c4Vis = p >= 0.58 && p <= 0.74;
+        const c5Vis = p >= 0.75 && p <= 0.91;
+        const c6Vis = p >= 0.92 && p <= 1.00;
 
         if (chamber1Group && chamber1Group.visible !== c1Vis) chamber1Group.visible = c1Vis;
         if (chamber2Group && chamber2Group.visible !== c2Vis) chamber2Group.visible = c2Vis;
