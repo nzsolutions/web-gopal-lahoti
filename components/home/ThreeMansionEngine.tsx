@@ -2916,10 +2916,10 @@ export default function ThreeMansionEngine() {
 
     // 2. Glowing Honey Onyx / Alabaster Arched Window Screen (Backlit Sanctuary Vista)
     const backlitWindowMat = new THREE.MeshStandardMaterial({
-      color: 0xfff0d6,
-      emissive: 0xffbe58,
-      emissiveIntensity: sceneStateRef.current.introComplete ? 2.2 : 0.0,
-      roughness: 0.15,
+      color: 0xc49a55,
+      emissive: 0x9e6822,
+      emissiveIntensity: sceneStateRef.current.introComplete ? 0.70 : 0.0,
+      roughness: 0.25,
       metalness: 0.05,
     });
     const backlitWindow = new THREE.Mesh(
@@ -6054,10 +6054,10 @@ export default function ThreeMansionEngine() {
         });
       });
 
-      torchereGlowMat.emissiveIntensity = 2.2;
-      backlitWindowMat.emissiveIntensity = 2.2;
-      floorSpillMat.opacity = 0.42;
-      focalLightSpill.intensity = 4.2;
+      torchereGlowMat.emissiveIntensity = 1.0;
+      backlitWindowMat.emissiveIntensity = 0.70;
+      floorSpillMat.opacity = 0.25;
+      focalLightSpill.intensity = 1.6;
     };
 
     // Dynamic Chamber Lighting Configs for Pooled Lights
@@ -6347,10 +6347,10 @@ export default function ThreeMansionEngine() {
         playFullResonanceChime();
       }, [], terminusTime);
 
-      tl.to(torchereGlowMat, { emissiveIntensity: 2.2, duration: 0.22, ease: "power2.out" }, terminusTime);
-      tl.to(backlitWindowMat, { emissiveIntensity: 2.2, duration: 0.25, ease: "power2.out" }, terminusTime);
-      tl.to(floorSpillMat, { opacity: 0.42, duration: 0.25, ease: "power2.out" }, terminusTime);
-      tl.to(focalLightSpill, { intensity: 4.2, duration: 0.25, ease: "power2.out" }, terminusTime);
+      tl.to(torchereGlowMat, { emissiveIntensity: 1.0, duration: 0.22, ease: "power2.out" }, terminusTime);
+      tl.to(backlitWindowMat, { emissiveIntensity: 0.70, duration: 0.25, ease: "power2.out" }, terminusTime);
+      tl.to(floorSpillMat, { opacity: 0.25, duration: 0.25, ease: "power2.out" }, terminusTime);
+      tl.to(focalLightSpill, { intensity: 1.6, duration: 0.25, ease: "power2.out" }, terminusTime);
 
       // Fade out dynamic wave light once reveal is complete
       tl.to(waveLight, { intensity: 0, duration: 0.20, ease: "power2.in" }, terminusTime + 0.06);
@@ -6986,20 +6986,13 @@ export default function ThreeMansionEngine() {
         state.currentProgress += (state.targetProgress - state.currentProgress) * cameraAlpha;
         const p = Math.max(0, Math.min(1, state.currentProgress));
 
-        // Spatial chamber geometry culling: each chamber is strictly rendered only when visible through portal/entrance
-        const c1Vis = p >= 0.05 && p <= 0.23;
-        const c2Vis = p >= 0.24 && p <= 0.40;
-        const c3Vis = p >= 0.41 && p <= 0.57;
-        const c4Vis = p >= 0.58 && p <= 0.74;
-        const c5Vis = p >= 0.75 && p <= 0.91;
-        const c6Vis = p >= 0.92 && p <= 1.00;
-
-        if (chamber1Group && chamber1Group.visible !== c1Vis) chamber1Group.visible = c1Vis;
-        if (chamber2Group && chamber2Group.visible !== c2Vis) chamber2Group.visible = c2Vis;
-        if (chamber3Group && chamber3Group.visible !== c3Vis) chamber3Group.visible = c3Vis;
-        if (chamber4Group && chamber4Group.visible !== c4Vis) chamber4Group.visible = c4Vis;
-        if (chamber5Group && chamber5Group.visible !== c5Vis) chamber5Group.visible = c5Vis;
-        if (chamber6Group && chamber6Group.visible !== c6Vis) chamber6Group.visible = c6Vis;
+        // Ensure all chambers are seamlessly rendered and visible through architectural doorway portals
+        if (chamber1Group && !chamber1Group.visible) chamber1Group.visible = true;
+        if (chamber2Group && !chamber2Group.visible) chamber2Group.visible = true;
+        if (chamber3Group && !chamber3Group.visible) chamber3Group.visible = true;
+        if (chamber4Group && !chamber4Group.visible) chamber4Group.visible = true;
+        if (chamber5Group && !chamber5Group.visible) chamber5Group.visible = true;
+        if (chamber6Group && !chamber6Group.visible) chamber6Group.visible = true;
 
         (window as any).__currentProgress = p;
 
